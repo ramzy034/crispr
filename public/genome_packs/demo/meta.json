@@ -1,0 +1,8 @@
+{
+  "id": "demo_pack",
+  "label": "Demo Pack (toy)",
+  "version": "1.0",
+  "sequences": [
+    { "name": "demo_contig", "length": 200, "file": "/genome_packs/demo/demo_contig.txt" }
+  ]
+}

@@ -1,0 +1,218 @@
+/* ===== Global reset-ish ===== */
+:root {
+  --bg0: #05060a;
+  --bg1: #070912;
+  --card: rgba(255, 255, 255, 0.06);
+  --card2: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.68);
+  --muted2: rgba(255, 255, 255, 0.56);
+  --accent: #7aa7ff;
+  --accent2: #b77cff;
+  --shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  --radius: 18px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background:
+    radial-gradient(900px 650px at 18% 8%, rgba(54,140,255,.35), rgba(0,0,0,0) 60%),
+    radial-gradient(900px 650px at 82% 18%, rgba(170,72,255,.25), rgba(0,0,0,0) 60%),
+    linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 55%, var(--bg0) 100%);
+}
+
+/* ===== Layout ===== */
+.container {
+  width: min(1200px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(14px);
+  background: rgba(0,0,0,0.45);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.topbarInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 650;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.brandDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, var(--accent), var(--accent2));
+  box-shadow: 0 0 18px rgba(122, 167, 255, 0.55);
+}
+
+.nav {
+  display: flex;
+  gap: 18px;
+}
+
+.nav a {
+  color: rgba(255,255,255,0.82);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.nav a:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+
+/* ===== Hero ===== */
+.heroHeader {
+  padding: 34px 0 18px;
+}
+
+.kicker {
+  color: var(--muted2);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 650;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+  font-weight: 800;
+  font-size: clamp(36px, 5vw, 74px);
+  line-height: 0.98;
+  margin: 0 0 12px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 16px;
+  max-width: 920px;
+  line-height: 1.55;
+}
+
+/* ===== Cards / grids ===== */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+  margin: 18px 0;
+}
+
+@media (max-width: 980px) {
+  .grid2 { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.05));
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.sectionTitle {
+  font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+  font-weight: 800;
+  font-size: 34px;
+  margin: 0 0 14px;
+}
+
+.sep {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.10);
+  margin: 16px 0;
+}
+
+.muted { color: var(--muted); }
+.mutedSmall { color: var(--muted2); font-size: 13px; }
+
+/* ===== Inputs / buttons ===== */
+.input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 12px 12px;
+  color: var(--text);
+  outline: none;
+}
+
+.input:focus {
+  border-color: rgba(122,167,255,0.55);
+  box-shadow: 0 0 0 4px rgba(122,167,255,0.14);
+}
+
+textarea.input {
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.btn {
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.92);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.btn:hover { background: rgba(255,255,255,0.10); }
+
+.btnPrimary {
+  border-color: rgba(122,167,255,0.35);
+  background: linear-gradient(90deg, rgba(122,167,255,0.22), rgba(183,124,255,0.18));
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ===== 3D Frame: THIS is important ===== */
+.helixFrame {
+  height: 360px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+  background:
+    radial-gradient(500px 320px at 50% 30%, rgba(122,167,255,0.18), rgba(0,0,0,0) 60%),
+    linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.55));
+}
+
+/* Make any canvas inside fill the frame (critical for three.js/canvas) */
+.helixFrame canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
