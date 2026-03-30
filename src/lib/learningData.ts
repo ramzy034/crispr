@@ -114,7 +114,7 @@ export const CHAPTERS: Chapter[] = [
         content: [
           {
             type: "video",
-            url: "[youtube.com](https://www.youtube.com/embed/2pp17E4E-O8)",
+            url: "https://www.youtube.com/embed/2pp17E4E-O8",
             caption: "How CRISPR lets us edit our DNA — TED Talk by Jennifer Doudna",
           },
           {
@@ -259,7 +259,7 @@ export const CHAPTERS: Chapter[] = [
         content: [
           {
             type: "video",
-            url: "[youtube.com](https://www.youtube.com/embed/Yzn9T9KDGzs)",
+            url: "https://www.youtube.com/embed/Yzn9T9KDGzs",
             caption: "How CRISPR could cure Sickle Cell Disease — explained",
           },
           {
@@ -389,7 +389,7 @@ export const CHAPTERS: Chapter[] = [
           },
           {
             type: "video",
-            url: "[youtube.com](https://www.youtube.com/embed/OeHFBnGEoPk)",
+            url: "https://www.youtube.com/embed/OeHFBnGEoPk",
             caption: "NHEJ vs HDR: DNA repair pathways explained",
           },
           {
@@ -511,7 +511,7 @@ export const CHAPTERS: Chapter[] = [
         content: [
           {
             type: "video",
-            url: "[youtube.com](https://www.youtube.com/embed/kqpERBe5OOM)",
+            url: "https://www.youtube.com/embed/kqpERBe5OOM",
             caption: "CRISPR delivery methods — viral vectors vs lipid nanoparticles",
           },
           {
