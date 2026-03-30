@@ -10,7 +10,9 @@ export type GuideWarning =
   | "POLY_T"
   | "HAS_N"
   | "SELF_COMPLEMENTARY"
-  | "BAD_SEED";
+  | "BAD_SEED"
+  | "HAIRPIN_POTENTIAL" // Enhanced: Warns if gRNA folds on itself
+  | "OFF_TARGET_RISK";   // Enhanced: Visual flag for low specificity
 
 export type Nuclease =
   | "SpCas9_NGG"
@@ -33,10 +35,11 @@ export type GuideFeatures = {
   simpleRepeat: boolean;
   selfComplementary: boolean;
   seed12: string; // PAM-proximal seed
+  tm?: number;    // Enhanced: Melting temperature for annealing
 };
 
 export type OnTargetScore = {
-  model: "heuristic_v1" | "custom_weights_v1";
+  model: "heuristic_v1" | "custom_weights_v1" | "azimuth_v2_approx";
   score: number; // 0..100
   details: Record<string, number | string | boolean>;
 };
@@ -52,11 +55,13 @@ export type OffTargetHit = {
     matchLine: string;
   };
   cut: number;
-  cfdLike?: number;
+  cfdScore?: number; // Enhanced: Industry standard CFD scoring (0..1)
 };
 
 export type SpecificityScore = {
-  method: "local_mismatch_sum_v1";
+  /** * ✅ FIXED: Added "seed_weighted_local_v2" to resolve the TS error 
+   */
+  method: "local_mismatch_sum_v1" | "seed_weighted_local_v2" | "cfd_sum_v1";
   score: number; // 0..100
   hitCount: number;
   worstHit?: OffTargetHit | null;
@@ -98,9 +103,11 @@ export type PairInfo = {
 
   notes: string[];
 
+  // Enhanced: More detailed PCR validation types
   pcr?: {
     suggestedAmpliconBp: number;
-    leftPrimerHint: { start: number; end: number };
-    rightPrimerHint: { start: number; end: number };
+    wtAmpliconBp: number; // The size of the DNA before deletion
+    leftPrimerHint: { start: number; end: number; seq: string; tm: number };
+    rightPrimerHint: { start: number; end: number; seq: string; tm: number };
   };
 };

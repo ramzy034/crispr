@@ -32,7 +32,7 @@ export async function enrichGuidesWithOffTargets(params: {
       maxHitsPerGuide,
     });
 
-    const spec = computeSpecificity(hits, maxMismatches);
+    const spec = computeSpecificity(hits);
 
     return {
       ...g,

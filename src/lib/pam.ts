@@ -97,7 +97,6 @@ function buildFeatures(protospacer: string): GuideFeatures {
 }
 
 function addWarnings(
-  protospacer: string,
   features: GuideFeatures,
   start: number,
   seqLen: number
@@ -125,7 +124,7 @@ function addWarnings(
   return w;
 }
 
-function scoreOnTarget(protospacer: string, features: GuideFeatures, warnings: GuideWarning[]): OnTargetScore {
+function scoreOnTarget(features: GuideFeatures, warnings: GuideWarning[]): OnTargetScore {
   // Offline-friendly heuristic score (NOT a full CHOPCHOP/Doench model)
   // Goal: a stable, interpretable 0..100 ranking for teaching + light filtering.
 
@@ -188,8 +187,8 @@ export function findSpCas9NGG(seq: string): Guide[] {
 
       const protospacer = s.slice(start, i);
       const features = buildFeatures(protospacer);
-      const warnings = addWarnings(protospacer, features, start, s.length);
-      const onTarget = scoreOnTarget(protospacer, features, warnings);
+      const warnings = addWarnings(features, start, s.length);
+      const onTarget = scoreOnTarget(features, warnings);
 
       const g: Guide = {
         id: `g+${idCounter++}`,
@@ -229,8 +228,8 @@ export function findSpCas9NGG(seq: string): Guide[] {
       const protospacer = revComp(protospacerPlus);
 
       const features = buildFeatures(protospacer);
-      const warnings = addWarnings(protospacer, features, start, s.length);
-      const onTarget = scoreOnTarget(protospacer, features, warnings);
+      const warnings = addWarnings(features, start, s.length);
+      const onTarget = scoreOnTarget(features, warnings);
 
       const g: Guide = {
         id: `g-${idCounter++}`,

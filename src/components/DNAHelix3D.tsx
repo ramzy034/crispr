@@ -8,8 +8,8 @@ function Helix() {
   const pointsB: THREE.Vector3[] = [];
   const turns = 6;
   const steps = 260;
-  const radius = 1.2;
-  const height = 6.0;
+  const radius = 1;
+  const height = 5.0;
 
   for (let i = 0; i < steps; i++) {
     const t = (i / (steps - 1)) * turns * Math.PI * 2;

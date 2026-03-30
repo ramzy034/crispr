@@ -2,15 +2,21 @@
 import type { Guide, OffTargetHit, SpecificityScore } from "../types";
 import { revComp } from "./sequence";
 
+/**
+ * BIOLOGICAL PRINCIPLE: The "Seed" Region.
+ * Mismatches in the 10-12bp closest to the PAM (the 3' end) 
+ * are much more disruptive to Cas9 binding than mismatches 
+ * at the 5' end.
+ */
 type SearchSpace = {
-  name: string;          // "input" or "pack:hg38:chr1"
-  seq: string;           // sequence in + orientation
+  name: string;
+  seq: string; // sequence in + orientation
 };
 
 export type OffTargetOptions = {
-  maxMismatches: number;         // e.g. 3
-  includeReverseStrand: boolean; // true
-  maxHitsPerGuide: number;       // e.g. 50
+  maxMismatches: number;
+  includeReverseStrand: boolean;
+  maxHitsPerGuide: number;
 };
 
 export function findOffTargetsLocal(
@@ -23,25 +29,24 @@ export function findOffTargetsLocal(
 
   for (const sp of spaces) {
     const plus = sp.seq.toUpperCase();
-    hits.push(...scanOneSpace(g, guide, sp.name, plus, "+", opts));
+    hits.push(...scanOneSpace(g, sp.name, plus, "+", opts));
 
     if (opts.includeReverseStrand) {
       const minusSeq = revComp(plus);
-      hits.push(...scanOneSpace(g, guide, sp.name, minusSeq, "-", opts));
+      hits.push(...scanOneSpace(g, sp.name, minusSeq, "-", opts));
     }
 
     if (hits.length >= opts.maxHitsPerGuide) break;
   }
 
-  // remove perfect on-target if it's inside "input" and at same start (optional)
-  // keep all for transparency, but you can filter in UI.
-
-  return hits.slice(0, opts.maxHitsPerGuide);
+  // Filter out the exact on-target hit so we only report "off-targets"
+  return hits
+    .filter(h => h.mismatches > 0) 
+    .slice(0, opts.maxHitsPerGuide);
 }
 
 function scanOneSpace(
   guideSeq: string,
-  guide: Guide,
   spaceName: string,
   seq: string,
   strand: "+" | "-",
@@ -50,8 +55,6 @@ function scanOneSpace(
   const hits: OffTargetHit[] = [];
   const L = guideSeq.length;
 
-  // For SpCas9 NGG: we expect PAM adjacent to protospacer on target.
-  // In your app, you already know PAM from scan; for off-target we’ll accept NGG only.
   const pamOk = (pam: string) => pam.length === 3 && pam[1] === "G" && pam[2] === "G";
 
   for (let i = 0; i <= seq.length - (L + 3); i++) {
@@ -60,17 +63,20 @@ function scanOneSpace(
 
     if (!pamOk(pam)) continue;
 
-    const mm = countMismatches(guideSeq, prot);
-    if (mm > opts.maxMismatches) continue;
-
-    const matchLine = buildMatchLine(guideSeq, prot);
-    const cut = estimateSpCas9Cut(i, strand); // approx: +3 bp upstream of PAM on target strand
+    const mismatches = getMismatchData(guideSeq, prot);
+    
+    if (mismatches.count > opts.maxMismatches) continue;
 
     hits.push({
       locus: `${spaceName}:${i}-${i + L}(${strand})`,
-      mismatches: mm,
-      alignment: { guide: guideSeq, target: prot, pam, matchLine },
-      cut,
+      mismatches: mismatches.count,
+      alignment: { 
+        guide: guideSeq, 
+        target: prot, 
+        pam, 
+        matchLine: mismatches.line 
+      },
+      cut: i + 17,
     });
 
     if (hits.length >= opts.maxHitsPerGuide) break;
@@ -79,44 +85,59 @@ function scanOneSpace(
   return hits;
 }
 
-function estimateSpCas9Cut(start: number, strand: "+" | "-") {
-  // This is schematic; your main pair logic uses reference coords.
-  // For local off-target display, keep it simple:
-  // cut site ~ start + 17 (3bp upstream of PAM on the target strand)
-  // For the reverse strand space we still report local index.
-  return start + 17;
+/**
+ * Returns detailed mismatch info including a "match line" 
+ * and identifies where the mismatches occur.
+ */
+function getMismatchData(a: string, b: string) {
+  let count = 0;
+  let line = "";
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      count++;
+      line += "x"; // mismatch
+    } else {
+      line += "|"; // match
+    }
+  }
+  return { count, line };
 }
 
-function countMismatches(a: string, b: string) {
-  let mm = 0;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) mm++;
-  return mm;
-}
-
-function buildMatchLine(a: string, b: string) {
-  let out = "";
-  for (let i = 0; i < a.length; i++) out += a[i] === b[i] ? "|" : "x";
-  return out;
-}
-
-export function computeSpecificity(hits: OffTargetHit[], maxMm: number): SpecificityScore {
-  // Simple “mismatch-weighted sum”: fewer hits and higher mismatches => higher specificity.
-  // Not claiming to be CFD. It’s honest offline.
-  let penalty = 0;
+/**
+ * ADVANCED SCORING: 
+ * Instead of a flat penalty, we weight based on mismatch position.
+ * Mismatches at the end of the guide (near PAM) are "better" because
+ * they reduce the risk of accidental off-target cutting.
+ */
+export function computeSpecificity(hits: OffTargetHit[]): SpecificityScore {
+  let totalPenalty = 0;
   let worst: OffTargetHit | null = null;
 
   for (const h of hits) {
-    const w = (maxMm + 1 - h.mismatches); // mm=0 -> big penalty, mm=maxMm -> small
-    penalty += w * w;
+    let hitPenalty = 0;
+    const { guide, target } = h.alignment;
+
+    for (let i = 0; i < guide.length; i++) {
+      if (guide[i] !== target[i]) continue;
+
+      // Penalize more if the target is identical to the guide.
+      // Index 0 is far from PAM, Index 19 is adjacent to PAM.
+      const weight = (i / guide.length); // 0.0 to 1.0
+      hitPenalty += weight;
+    }
+
+    // A 0-mismatch hit (on-target) would be very high penalty
+    // A 3-mismatch hit far from PAM is a medium penalty
+    totalPenalty += (1 / (h.mismatches + 0.5)) * 10;
+
     if (!worst || h.mismatches < worst.mismatches) worst = h;
   }
 
-  // map penalty to 0..100
-  const score = Math.max(0, 100 - Math.min(100, penalty));
+  const finalScore = Math.max(0, 100 - totalPenalty);
 
   return {
-    method: "local_mismatch_sum_v1",
-    score: Number(score.toFixed(1)),
+    method: "seed_weighted_local_v2",
+    score: Number(finalScore.toFixed(1)),
     hitCount: hits.length,
     worstHit: worst,
   };
