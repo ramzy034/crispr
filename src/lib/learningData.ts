@@ -255,12 +255,12 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         heading: "Real-World Application: Sickle Cell Disease",
-        visual: "video",
+        visual: "dna-animation",
         content: [
           {
-            type: "video",
-            url: "https://www.youtube.com/embed/Yzn9T9KDGzs",
-            caption: "How CRISPR could cure Sickle Cell Disease — explained",
+            type: "highlight",
+            text: "Victoria Gray was the first person treated with CRISPR gene editing for sickle cell disease in 2019. By 2023, the FDA approved Casgevy — the first CRISPR therapy ever approved — using the exact BCL11A enhancer deletion strategy described above. Gray reported: 'The therapy has really transformed my life more than I could have ever imagined.'",
+            color: "#81c784",
           },
           {
             type: "paragraph",
@@ -389,7 +389,7 @@ export const CHAPTERS: Chapter[] = [
           },
           {
             type: "video",
-            url: "https://www.youtube.com/embed/OeHFBnGEoPk",
+            url: "https://www.youtube.com/embed/jAhjPd4MD-E",
             caption: "NHEJ vs HDR: DNA repair pathways explained",
           },
           {
@@ -507,12 +507,16 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         heading: "Delivery Vehicles",
-        visual: "video",
+        visual: "delivery-diagram",
         content: [
           {
-            type: "video",
-            url: "https://www.youtube.com/embed/kqpERBe5OOM",
-            caption: "CRISPR delivery methods — viral vectors vs lipid nanoparticles",
+            type: "fact-grid",
+            facts: [
+              { label: "Electroporation efficiency", value: ">80%", color: "#ffb74d" },
+              { label: "AAV max payload", value: "4.7 kb", color: "#4fc3f7" },
+              { label: "LNP particle size", value: "50–120 nm", color: "#ce93d8" },
+              { label: "LNP liver targeting", value: "Up to 80%", color: "#81c784" },
+            ],
           },
           {
             type: "steps",

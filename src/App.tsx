@@ -28,7 +28,7 @@ export default function App() {
 
   const [sel1, setSel1] = useState<string | null>(null);
   const [sel2, setSel2] = useState<string | null>(null);
-  const [activePage, setActivePage] = useState<"lab" | "learn">("lab");
+  const [activePage, setActivePage] = useState<"lab" | "learn">("learn");
 
   const cleaned = useMemo(() => cleanFasta(rawInput), [rawInput]);
 
@@ -106,8 +106,15 @@ export default function App() {
       "linear-gradient(180deg, #05060a 0%, #070912 55%, #05060a 100%)",
   };
 
+  const feasColor =
+    feasibility == null ? "#4fc3f7"
+    : feasibility > 70 ? "#69f0ae"
+    : feasibility > 40 ? "#ffca28"
+    : "#ef5350";
+
   return (
     <div className="pageWrap" style={pageBg}>
+      {/* ── TOPBAR ─────────────────────────────────────────── */}
       <header className="topbar">
         <div className="container topbarInner">
           <div className="brand">
@@ -140,208 +147,249 @@ export default function App() {
         <LearningPage onEnterLab={() => setActivePage("lab")} />
       ) : (
         <>
-          {/* ENHANCED HERO: Targeted at Students */}
-          <section className="hero" id="learn">
-            <div className="container heroInner" style={{ textAlign: 'center' }}>
-              <div className="kicker" style={{ color: '#28d2be', letterSpacing: '2px' }}>VIRTUAL GENETIC ENGINEERING</div>
-              <h1 className="title" style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>Mastering CRISPR Deletions</h1>
-              <div className="subtitle" style={{ maxWidth: '800px', margin: '0 auto' }}>
-                A professional workspace for students to design, visualize, and test
-                paired-guide RNA candidates. Explore clinical disease models and simulate
-                how molecular scissors edit the code of life.
+          {/* ── DESIGNER HERO ───────────────────────────────── */}
+          <section className="ds-hero">
+            <div className="ds-hero-grid">
+              <div className="ds-hero-bg-line ds-hero-bg-line-1" />
+              <div className="ds-hero-bg-line ds-hero-bg-line-2" />
+            </div>
+            <div className="container ds-hero-inner">
+              <div className="ds-kicker">
+                <span className="ds-kicker-dot" />
+                VIRTUAL GENETIC ENGINEERING
+              </div>
+              <h1 className="ds-hero-title">
+                CRISPR Paired-Guide<br />
+                <span className="ds-title-accent">Designer Tool</span>
+              </h1>
+              <p className="ds-hero-sub">
+                Design, visualise, and test paired-guide RNA candidates.
+                Explore clinical disease models and simulate how molecular scissors edit the code of life.
+              </p>
+              <div className="ds-hero-steps">
+                {["Select a clinical target", "Choose two guide RNAs", "Inspect the 3-D excision"].map((s, i) => (
+                  <div className="ds-hero-step" key={i}>
+                    <span className="ds-hero-step-num">{i + 1}</span>
+                    <span className="ds-hero-step-label">{s}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
 
-          <div className="subnav">
-            <div className="container subnavInner">
-              <a href="#learnSection">1. THE BIOLOGY</a>
-              <a href="#designer">2. THE DESIGNER</a>
-              <a href="#export">3. RESULTS</a>
+          {/* ── SUBNAV ──────────────────────────────────────── */}
+          <nav className="ds-subnav">
+            <div className="container ds-subnav-inner">
+              <a href="#learnSection" className="ds-subnav-link">
+                <span className="ds-subnav-num">01</span> Biology
+              </a>
+              <span className="ds-subnav-sep">›</span>
+              <a href="#designer" className="ds-subnav-link">
+                <span className="ds-subnav-num">02</span> Designer
+              </a>
+              <span className="ds-subnav-sep">›</span>
+              <a href="#export" className="ds-subnav-link">
+                <span className="ds-subnav-num">03</span> Results
+              </a>
             </div>
-          </div>
+          </nav>
 
-          <main className="container">
-            {/* ENHANCED LEARN SECTION: Frames the Lab environment */}
-            <section className="section learn hasBg" id="learnSection">
-              <div className="sectionOverlay" />
-              <div className="sectionContent">
-                <div className="grid2">
-                  <div className="card">
-                    <IntroBlog onSequenceSelect={handleSequenceSelect} />
+          <main className="container ds-main">
+
+            {/* ── 01 BIOLOGY ──────────────────────────────────── */}
+            <section className="ds-section" id="learnSection">
+              <div className="ds-section-header">
+                <span className="ds-section-tag">01</span>
+                <h2 className="ds-section-title">The Biology</h2>
+              </div>
+
+              <div className="ds-biology-grid">
+                {/* Left: IntroBlog */}
+                <div className="ds-card">
+                  <IntroBlog onSequenceSelect={handleSequenceSelect} />
+                </div>
+
+                {/* Right: 3-D simulation */}
+                <div className="ds-card ds-card-scene">
+                  <div className="ds-card-header">
+                    <span className="ds-card-label">Real-time 3D Simulation</span>
+                    <span className="ds-badge ds-badge-live">● LIVE</span>
                   </div>
-
-                  <div className="card" style={{ border: '1px solid rgba(54,140,255,0.2)' }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                      <div className="sectionTitle" style={{ margin: 0, fontSize: '0.9rem' }}>Real-time 3D Simulation</div>
-                      <div className="muted small">ACTIVE VIEWPORT</div>
-                    </div>
-
-                    <div className="canvasFrame" style={{ marginTop: 14, background: '#000', borderRadius: '8px' }}>
-                      <CrisprScene3D pair={pair} seqLength={cleaned.cleaned.length} />
-                    </div>
-                    <hr className="sep" />
-                    <div style={{ padding: '10px' }}>
-                      <h4 style={{ fontSize: '0.8rem', marginBottom: '5px' }}>Instructions for Students:</h4>
-                      <p className="muted small" style={{ margin: 0 }}>
-                        1. Use the panel on the left to select a clinical target.<br />
-                        2. Scroll down to select two "Candidate Guides" from the table.<br />
-                        3. Observe the 3D model above to see the physical deletion area in blue.
-                      </p>
-                    </div>
+                  <div className="ds-scene-frame">
+                    <CrisprScene3D pair={pair} seqLength={cleaned.cleaned.length} />
+                  </div>
+                  <div className="ds-scene-hint">
+                    <span className="ds-hint-icon">💡</span>
+                    Select two guides from the table below — the 3-D model will animate the deletion.
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* DESIGNER SECTION */}
-            <section className="section designer hasBg" id="designer">
-              <div className="sectionOverlay" />
-              <div className="sectionContent">
-                <div className="sectionTitle" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  Designer Console
-                  <span style={{ fontSize: '0.7rem', background: '#333', padding: '4px 8px', borderRadius: '4px', verticalAlign: 'middle' }}>STUDENT WORKSPACE</span>
+            {/* ── 02 DESIGNER ─────────────────────────────────── */}
+            <section className="ds-section" id="designer">
+              <div className="ds-section-header">
+                <span className="ds-section-tag">02</span>
+                <h2 className="ds-section-title">Designer Console</h2>
+                <span className="ds-badge">STUDENT WORKSPACE</span>
+              </div>
+
+              {/* Row A: Sequence input + Filters */}
+              <div className="ds-two-col">
+                {/* Sequence input */}
+                <div className="ds-card">
+                  <p className="ds-card-label" style={{ marginBottom: 12 }}>Sequence Input</p>
+                  <p className="ds-card-hint">Paste a genomic FASTA sequence or use the demo below.</p>
+                  <textarea
+                    className="input ds-seq-input"
+                    value={rawInput}
+                    onChange={(e) => setRawInput(e.target.value)}
+                  />
+                  <div className="ds-seq-stats">
+                    <span>Raw chars: <b>{cleaned.stats.rawChars}</b></span>
+                    <span>Cleaned: <b>{cleaned.stats.cleanedLength} bp</b></span>
+                  </div>
+                  <div className="ds-btn-row">
+                    <button className="btn btnPrimary" onClick={loadDemo}>Reset to Demo</button>
+                    <button className="btn" onClick={clearSelection}>Clear Selection</button>
+                  </div>
                 </div>
 
-                <section className="grid2">
-                  <div className="card">
-                    <div className="muted" style={{ marginBottom: 10, fontSize: '0.85rem' }}>
-                      <strong>Sequence Input:</strong> The cleaned genomic data for your chosen disease model is loaded below.
-                    </div>
-                    <textarea
-                      className="input"
-                      style={{ minHeight: 180, fontFamily: 'monospace', fontSize: '0.8rem' }}
-                      value={rawInput}
-                      onChange={(e) => setRawInput(e.target.value)}
-                    />
-                    <div className="muted" style={{ marginTop: 10, fontSize: '0.75rem' }}>
-                      Raw chars: <b>{cleaned.stats.rawChars}</b> • Cleaned length:{" "}
-                      <b>{cleaned.stats.cleanedLength}</b> bp
-                    </div>
-                    <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <button className="btn btnPrimary" onClick={loadDemo}>Reset to Demo</button>
-                      <button className="btn" onClick={clearSelection}>Reset Pair</button>
+                {/* Filters */}
+                <div className="ds-card">
+                  <p className="ds-card-label" style={{ marginBottom: 12 }}>Guide Quality Filters</p>
+                  <p className="ds-card-hint">Narrow candidates by biochemical properties.</p>
+
+                  <div className="ds-filter-group">
+                    <span className="ds-filter-label">DNA Strand</span>
+                    <div className="ds-btn-row">
+                      {(["both", "+", "-"] as const).map((v) => (
+                        <button
+                          key={v}
+                          className={`btn btn-sm ${strandFilter === v ? "btn-active" : ""}`}
+                          onClick={() => setStrandFilter(v)}
+                        >
+                          {v === "both" ? "Both" : v === "+" ? "Forward +" : "Reverse −"}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  <div className="card">
-                    <div className="sectionTitle" style={{ marginTop: 0, fontSize: '1rem' }}>Guide Quality Filters</div>
-                    <div className="muted" style={{ marginBottom: 10, fontSize: '0.85rem' }}>
-                      Filter guides based on biochemical properties like GC content.
+                  <div className="ds-filter-group">
+                    <span className="ds-filter-label">GC Content Range <span className="ds-filter-hint">(optimal 0.40–0.60)</span></span>
+                    <div className="ds-range-row">
+                      <input className="input ds-range-input" type="number" min={0} max={1} step={0.01}
+                        value={gcMin} onChange={(e) => setGcMin(Number(e.target.value))} />
+                      <span className="ds-range-sep">→</span>
+                      <input className="input ds-range-input" type="number" min={0} max={1} step={0.01}
+                        value={gcMax} onChange={(e) => setGcMax(Number(e.target.value))} />
                     </div>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                      <span className="muted small">DNA Strand:</span>
-                      <button className="btn btn-sm" onClick={() => setStrandFilter("both")}>Both</button>
-                      <button className="btn btn-sm" onClick={() => setStrandFilter("+")}>Forward</button>
-                      <button className="btn btn-sm" onClick={() => setStrandFilter("-")}>Reverse</button>
-                    </div>
-                    <div style={{ marginTop: 14 }}>
-                      <div className="muted small">Ideal GC Range (0.4 - 0.6)</div>
-                      <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
-                        <input
-                          className="input"
-                          style={{ width: 100 }}
-                          type="number"
-                          min={0} max={1} step={0.01}
-                          value={gcMin}
-                          onChange={(e) => setGcMin(Number(e.target.value))}
-                        />
-                        <span className="muted">to</span>
-                        <input
-                          className="input"
-                          style={{ width: 100 }}
-                          type="number"
-                          min={0} max={1} step={0.01}
-                          value={gcMax}
-                          onChange={(e) => setGcMax(Number(e.target.value))}
-                        />
-                      </div>
-                    </div>
-                    <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14 }}>
-                      <input type="checkbox" checked={hideWarn} onChange={(e) => setHideWarn(e.target.checked)} />
-                      <span className="muted small">Automatically hide low-efficiency guides</span>
-                    </label>
                   </div>
-                </section>
 
-                <section className="card" style={{ marginTop: 22 }}>
-                  <div className="sectionTitle" style={{ marginTop: 0 }}>Genome Mapping</div>
-                  <SequenceTrack
-                    seqLength={cleaned.cleaned.length}
+                  <label className="ds-checkbox-row">
+                    <input type="checkbox" checked={hideWarn} onChange={(e) => setHideWarn(e.target.checked)} />
+                    <span>Hide low-efficiency guides automatically</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Row B: Genome Map */}
+              <div className="ds-card ds-card-full" style={{ marginTop: 20 }}>
+                <p className="ds-card-label" style={{ marginBottom: 14 }}>Genome Mapping</p>
+                <SequenceTrack
+                  seqLength={cleaned.cleaned.length}
+                  guides={guides}
+                  selectedIds={selectedIds}
+                  onSelectGuide={selectGuide}
+                  pair={pair}
+                />
+              </div>
+
+              {/* Row C: Guide table + Outcome */}
+              <div className="ds-two-col" style={{ marginTop: 20 }}>
+                {/* Guide table */}
+                <div className="ds-card">
+                  <p className="ds-card-label" style={{ marginBottom: 14 }}>Candidate Guide Library</p>
+                  <GuideTable
                     guides={guides}
                     selectedIds={selectedIds}
                     onSelectGuide={selectGuide}
-                    pair={pair}
+                    hideWarnings={hideWarn}
                   />
-                </section>
+                </div>
 
-                <section className="grid2" style={{ marginTop: 22 }}>
-                  <div className="card">
-                    <div className="sectionTitle" style={{ marginTop: 0 }}>Candidate Guide Library</div>
-                    <GuideTable
-                      guides={guides}
-                      selectedIds={selectedIds}
-                      onSelectGuide={selectGuide}
-                      hideWarnings={hideWarn}
-                    />
-                  </div>
+                {/* Experimental outcome */}
+                <div className={`ds-card ds-card-outcome ${pair ? "ds-card-outcome-active" : ""}`}>
+                  <p className="ds-card-label" style={{ marginBottom: 14 }}>Experimental Outcome</p>
 
-                  <div className="card" style={{ border: pair ? '1px solid #28d2be' : '1px solid rgba(255,255,255,0.1)' }}>
-                    <div className="sectionTitle" style={{ marginTop: 0 }}>Experimental Outcome</div>
-                    {feasibility !== null && (
-                      <div className="feasibility-meter" style={{
-                        padding: '12px',
-                        borderRadius: '8px',
-                        background: 'rgba(255,255,255,0.05)',
-                        marginBottom: '16px',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <span className="muted small">EXCISION SUCCESS RATE</span>
-                          <span style={{
-                            color: feasibility > 70 ? '#28d2be' : feasibility > 40 ? '#ffcc00' : '#ff4444',
-                            fontWeight: 'bold'
-                          }}>{feasibility}%</span>
-                        </div>
-                        <div style={{ width: '100%', height: '6px', background: '#333', borderRadius: '3px', overflow: 'hidden' }}>
-                          <div style={{
-                            width: `${feasibility}%`,
-                            height: '100%',
-                            background: `linear-gradient(90deg, #368cff, ${feasibility > 70 ? '#28d2be' : '#ffcc00'})`,
-                            transition: 'width 0.5s ease-out'
-                          }} />
-                        </div>
+                  {feasibility !== null ? (
+                    <div className="ds-feasibility">
+                      <div className="ds-feasibility-header">
+                        <span className="ds-feasibility-label">EXCISION SUCCESS RATE</span>
+                        <span className="ds-feasibility-value" style={{ color: feasColor }}>
+                          {feasibility}%
+                        </span>
                       </div>
-                    )}
-                    <PairInspector pair={pair} seqLength={cleaned.cleaned.length} />
-                  </div>
-                </section>
+                      <div className="ds-feasibility-track">
+                        <div
+                          className="ds-feasibility-fill"
+                          style={{
+                            width: `${feasibility}%`,
+                            background: `linear-gradient(90deg, #368cff, ${feasColor})`,
+                          }}
+                        />
+                      </div>
+                      <div className="ds-feasibility-tier" style={{ color: feasColor }}>
+                        {feasibility > 70 ? "High efficiency predicted"
+                          : feasibility > 40 ? "Moderate efficiency — consider optimising GC content"
+                          : "Low efficiency — review guide selection"}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="ds-outcome-empty">
+                      <span className="ds-outcome-empty-icon">⬡</span>
+                      <span>Select two guides to compute outcome metrics</span>
+                    </div>
+                  )}
+
+                  <PairInspector pair={pair} seqLength={cleaned.cleaned.length} />
+                </div>
               </div>
             </section>
 
-            <section className="section" id="export">
-              <div className="sectionTitle">Lab Report & Export</div>
-              <section className="card">
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
-                  <div className="muted" style={{ maxWidth: 760, fontSize: '0.9rem' }}>
-                    Students can export their design candidates as a CSV for spreadsheet analysis, or download a formal PDF summary of their selected CRISPR pair.
+            {/* ── 03 EXPORT ───────────────────────────────────── */}
+            <section className="ds-section" id="export">
+              <div className="ds-section-header">
+                <span className="ds-section-tag">03</span>
+                <h2 className="ds-section-title">Lab Report & Export</h2>
+              </div>
+
+              <div className="ds-card ds-export-card">
+                <div className="ds-export-body">
+                  <div>
+                    <p className="ds-card-label" style={{ marginBottom: 8 }}>Download Your Results</p>
+                    <p className="ds-card-hint">
+                      Export all candidate guides as CSV for spreadsheet analysis,
+                      or generate a formal PDF summary of the selected CRISPR pair.
+                    </p>
                   </div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div className="ds-btn-row">
                     <button className="btn" onClick={() => exportCandidatesCSV(guides)}>
-                      Export CSV
+                      ↓ Export CSV
                     </button>
                     <button
                       className="btn btnPrimary"
                       disabled={!pair}
                       onClick={() => pair && exportSelectedPairPDF(pair, cleaned.cleaned)}
                     >
-                      Generate PDF Lab Report
+                      ↓ Generate PDF Report
                     </button>
                   </div>
                 </div>
-              </section>
+              </div>
             </section>
-            <div style={{ height: 40 }} />
+
+            <div style={{ height: 60 }} />
           </main>
         </>
       )}

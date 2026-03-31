@@ -16,7 +16,14 @@ const STAT_ITEMS = [
 
 export default function LearningPage({ onEnterLab }: Props) {
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [completed, setCompleted] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("crispr-completed");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -32,7 +39,11 @@ export default function LearningPage({ onEnterLab }: Props) {
   }, [allDone, completed.size]);
 
   const handleComplete = (id: string) => {
-    setCompleted(prev => new Set([...prev, id]));
+    setCompleted(prev => {
+      const updated = new Set([...prev, id]);
+      localStorage.setItem("crispr-completed", JSON.stringify([...updated]));
+      return updated;
+    });
     setActiveChapter(null);
   };
 

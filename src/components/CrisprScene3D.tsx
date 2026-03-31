@@ -4,22 +4,76 @@ import { OrbitControls, Environment, Text, Float, ContactShadows, PerspectiveCam
 import * as THREE from "three";
 import type { PairInfo } from "../types";
 
-/**
- * DNA_CONFIG: Centrally defined constants to fix scope errors (e.g., 'radius' not found)
- * and ensure consistent proportions across all sub-components.
- */
 const DNA_CONFIG = {
-  H: 10.5,            // Increased height for a "bigger" feel
-  turns: 6.8,         // More turns to fill the vertical space
-  radius: 1.45,       // Thicker DNA for better visibility
-  backboneR: 0.1,     // Chunky, premium-looking backbones
-  rungR: 0.04,        
-  rungCount: 96,      // Denser rungs for detail
-  zScale: 0.82        // Subtle flattening for a "textbook" look
+  H: 10.5,
+  turns: 6.8,
+  radius: 1.45,
+  backboneR: 0.1,
+  rungR: 0.04,
+  rungCount: 96,
+  zScale: 0.82,
 };
 
+// ── Shared button style ──────────────────────────────────────────
+const simBtnBase: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 7,
+  padding: "8px 16px",
+  borderRadius: 10,
+  fontSize: 12,
+  fontWeight: 700,
+  fontFamily: "inherit",
+  letterSpacing: "0.06em",
+  cursor: "pointer",
+  border: "1px solid",
+  backdropFilter: "blur(12px)",
+  transition: "background 0.2s, border-color 0.2s, opacity 0.2s",
+  userSelect: "none",
+  lineHeight: 1,
+};
+
+function SimButton({
+  icon, label, onClick, active, color = "#4fc3f7", disabled,
+}: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  color?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        ...simBtnBase,
+        background: active
+          ? `rgba(${color === "#4fc3f7" ? "79,195,247" : color === "#69f0ae" ? "105,240,174" : "255,107,107"},0.18)`
+          : "rgba(8,14,28,0.82)",
+        borderColor: active
+          ? color
+          : disabled
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(255,255,255,0.18)",
+        color: disabled ? "rgba(255,255,255,0.25)" : color,
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      <span style={{ fontSize: 11 }}>{icon}</span>
+      {label}
+    </button>
+  );
+}
+
+// ── Public component ─────────────────────────────────────────────
 export default function CrisprScene3D(props: { pair: PairInfo | null; seqLength: number }) {
   const { pair, seqLength } = props;
+
+  const [paused, setPaused]           = useState(false);
+  const [resetToken, setResetToken]   = useState(0);
+  const [phase, setPhaseOut]          = useState<string>("idle");
 
   const cuts = useMemo(() => {
     if (!pair || seqLength <= 0) return null;
@@ -30,24 +84,44 @@ export default function CrisprScene3D(props: { pair: PairInfo | null; seqLength:
     return { t1, t2, a, b };
   }, [pair, seqLength]);
 
+  const hasPair = Boolean(cuts);
+
+  function handleStop()   { setPaused(true); }
+  function handleStart()  { setPaused(false); }
+  function handleRepeat() {
+    setPaused(false);
+    setResetToken(t => t + 1);
+  }
+
+  const isRunning = hasPair && !paused;
+  const isStopped = hasPair && paused;
+
   return (
-    /* CONTAINER SIZE: Set to 750px height to dominate the section */
-    <div style={{ width: "100%", height: "750px", position: "relative", background: "#05060A", borderRadius: "12px", overflow: "hidden" }}>
+    <div style={{
+      width: "100%",
+      height: "750px",
+      position: "relative",
+      background: "#05060A",
+      borderRadius: "12px",
+      overflow: "hidden",
+    }}>
       <Canvas dpr={[1, 2]} shadows>
         <color attach="background" args={["#030407"]} />
-        
-        {/* Adjusted Camera for a wider, more dramatic perspective */}
         <PerspectiveCamera makeDefault position={[0, 0, 8.5]} fov={45} />
 
-        {/* Cinematic Studio Lighting */}
         <ambientLight intensity={0.5} />
         <spotLight position={[10, 15, 10]} angle={0.25} penumbra={1} intensity={2} castShadow />
         <pointLight position={[-8, -5, 5]} color="#FF2D55" intensity={1.5} />
-        <pointLight position={[8, 5, 5]} color="#007AFF" intensity={1.5} />
+        <pointLight position={[8, 5, 5]}  color="#007AFF" intensity={1.5} />
 
         <Environment preset="night" />
 
-        <GroupCrisprScene cuts={cuts} />
+        <GroupCrisprScene
+          cuts={cuts}
+          paused={paused}
+          resetToken={resetToken}
+          onPhaseChange={setPhaseOut}
+        />
 
         <OrbitControls
           enablePan={false}
@@ -56,41 +130,126 @@ export default function CrisprScene3D(props: { pair: PairInfo | null; seqLength:
           maxPolarAngle={Math.PI * 0.6}
           minPolarAngle={Math.PI * 0.3}
         />
-        
         <ContactShadows opacity={0.5} scale={25} blur={2} far={10} resolution={256} color="#000000" />
       </Canvas>
+
+      {/* ── Simulation controls ───────────────────────────── */}
+      <div style={{
+        position: "absolute",
+        bottom: 16,
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        gap: 8,
+        alignItems: "center",
+      }}>
+        {/* Status pill */}
+        <div style={{
+          padding: "5px 12px",
+          borderRadius: 99,
+          background: "rgba(8,14,28,0.82)",
+          border: "1px solid rgba(255,255,255,0.10)",
+          backdropFilter: "blur(12px)",
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.12em",
+          color: !hasPair ? "rgba(255,255,255,0.3)"
+            : phase === "idle"  ? "rgba(255,255,255,0.4)"
+            : phase === "ligate" && !paused ? "#69f0ae"
+            : paused ? "#ffca28"
+            : "#4fc3f7",
+          fontFamily: "var(--font-mono, monospace)",
+          minWidth: 90,
+          textAlign: "center",
+        }}>
+          {!hasPair       ? "NO PAIR"
+           : phase === "idle"   ? "IDLE"
+           : phase === "target" ? "SEARCHING"
+           : phase === "bind"   ? "BINDING"
+           : phase === "cut"    ? "CUTTING"
+           : phase === "delete" ? "EXCISING"
+           : phase === "ligate" ? "REPAIRING"
+           : "—"}
+          {paused && hasPair ? " ·· PAUSED" : ""}
+        </div>
+
+        <SimButton
+          icon="▶"
+          label="START"
+          onClick={handleStart}
+          active={isRunning}
+          color="#4fc3f7"
+          disabled={!hasPair || isRunning}
+        />
+        <SimButton
+          icon="⏹"
+          label="STOP"
+          onClick={handleStop}
+          color="#ffca28"
+          disabled={!hasPair || isStopped}
+        />
+        <SimButton
+          icon="↺"
+          label="REPEAT"
+          onClick={handleRepeat}
+          color="#69f0ae"
+          disabled={!hasPair}
+        />
+      </div>
     </div>
   );
 }
 
-function GroupCrisprScene(props: { cuts: null | { t1: number; t2: number; a: number; b: number } }) {
-  const { cuts } = props;
+// ── Inner scene group (inside Canvas) ───────────────────────────
+function GroupCrisprScene(props: {
+  cuts: null | { t1: number; t2: number; a: number; b: number };
+  paused: boolean;
+  resetToken: number;
+  onPhaseChange: (p: string) => void;
+}) {
+  const { cuts, paused, resetToken, onPhaseChange } = props;
   const [phase, setPhase] = useState<"idle" | "target" | "bind" | "cut" | "delete" | "ligate">("idle");
 
-  const tRef = useRef(0);
+  const tRef     = useRef(0);
   const midScale = useRef(1);
-  const flash = useRef(0);
-  const snap = useRef(0);
-  const guideIn = useRef(0);
-  const cas9In = useRef(0);
-  const lastKey = useRef<string>("none");
+  const flash    = useRef(0);
+  const snap     = useRef(0);
+  const guideIn  = useRef(0);
+  const cas9In   = useRef(0);
+  const lastKey  = useRef<string>("none");
 
   const key = cuts ? `${cuts.t1.toFixed(4)}-${cuts.t2.toFixed(4)}` : "none";
 
+  // Reset when the pair selection changes
   useEffect(() => {
     if (key === lastKey.current) return;
     lastKey.current = key;
-    tRef.current = 0;
-    midScale.current = 1;
-    flash.current = 0;
-    snap.current = 0;
-    guideIn.current = 0;
-    cas9In.current = 0;
-    setPhase(cuts ? "target" : "idle");
-  }, [key, cuts]);
+    tRef.current = 0; midScale.current = 1;
+    flash.current = 0; snap.current = 0;
+    guideIn.current = 0; cas9In.current = 0;
+    const next = cuts ? "target" : "idle";
+    setPhase(next);
+    onPhaseChange(next);
+  }, [key, cuts, onPhaseChange]);
+
+  // Reset when Repeat is triggered
+  const prevReset = useRef(resetToken);
+  useEffect(() => {
+    if (prevReset.current === resetToken) return;
+    prevReset.current = resetToken;
+    tRef.current = 0; midScale.current = 1;
+    flash.current = 0; snap.current = 0;
+    guideIn.current = 0; cas9In.current = 0;
+    const next = cuts ? "target" : "idle";
+    setPhase(next);
+    onPhaseChange(next);
+  }, [resetToken, cuts, onPhaseChange]);
+
+  // Notify parent when phase changes
+  useEffect(() => { onPhaseChange(phase); }, [phase, onPhaseChange]);
 
   useFrame((_, dt) => {
-    if (phase === "idle") return;
+    if (paused || phase === "idle") return;
     tRef.current += dt;
 
     if (phase === "target") {
@@ -111,24 +270,20 @@ function GroupCrisprScene(props: { cuts: null | { t1: number; t2: number; a: num
     }
   });
 
-  const y1 = cuts ? lerp(-DNA_CONFIG.H / 2, DNA_CONFIG.H / 2, cuts.t1) : 0;
-  const y2 = cuts ? lerp(-DNA_CONFIG.H / 2, DNA_CONFIG.H / 2, cuts.t2) : 0;
+  const y1   = cuts ? lerp(-DNA_CONFIG.H / 2, DNA_CONFIG.H / 2, cuts.t1) : 0;
+  const y2   = cuts ? lerp(-DNA_CONFIG.H / 2, DNA_CONFIG.H / 2, cuts.t2) : 0;
   const yMin = Math.min(y1, y2);
   const yMax = Math.max(y1, y2);
-  const gap = cuts ? (yMax - yMin) : 0;
+  const gap   = cuts ? (yMax - yMin) : 0;
   const shift = snap.current * (gap / 2);
 
   return (
     <group>
-      {/* Centered DNA Group with extra space for tools */}
       <group position={[1.4, 0, 0]}>
-        
-        {/* TOP SEGMENT */}
         <group position={[0, -shift, 0]}>
           <DNAHelixSegment yFrom={yMax} yTo={DNA_CONFIG.H / 2} />
         </group>
 
-        {/* MIDDLE DELETION SEGMENT */}
         {cuts && (
           <group scale={[1, midScale.current, 1]}>
             <DNAHelixSegment yFrom={yMin} yTo={yMax} accent />
@@ -137,12 +292,10 @@ function GroupCrisprScene(props: { cuts: null | { t1: number; t2: number; a: num
           </group>
         )}
 
-        {/* BOTTOM SEGMENT */}
         <group position={[0, shift, 0]}>
           <DNAHelixSegment yFrom={-DNA_CONFIG.H / 2} yTo={cuts ? yMin : DNA_CONFIG.H / 2} />
         </group>
 
-        {/* Visual Annotations (using fixed radius scoping) */}
         {cuts && (
           <>
             <CutMarker y={y1} flash={flash.current} label="Site A" side={1} />
@@ -153,30 +306,34 @@ function GroupCrisprScene(props: { cuts: null | { t1: number; t2: number; a: num
         )}
       </group>
 
-      {/* Interactive CRISPR Machinery */}
       {cuts && phase !== "idle" && (
         <>
           <Float speed={2.5} rotationIntensity={0.3} floatIntensity={0.4}>
-            <GuideRNA yTarget={(y1 + y2) / 2} zIn={THREE.MathUtils.lerp(3.5, 1.2, guideIn.current)} xFrom={-3.5} xTo={-0.6} intensity={phase === "target" ? 1 : 0.6} />
+            <GuideRNA
+              yTarget={(y1 + y2) / 2}
+              zIn={THREE.MathUtils.lerp(3.5, 1.2, guideIn.current)}
+              xFrom={-3.5} xTo={-0.6}
+              intensity={phase === "target" ? 1 : 0.6}
+            />
           </Float>
-          <Cas9Clamp yTarget={(y1 + y2) / 2} zIn={THREE.MathUtils.lerp(4.0, 1.7, cas9In.current)} flash={flash.current} x={3.4} />
+          <Cas9Clamp
+            yTarget={(y1 + y2) / 2}
+            zIn={THREE.MathUtils.lerp(4.0, 1.7, cas9In.current)}
+            flash={flash.current}
+            x={3.4}
+          />
         </>
       )}
 
-      {/* Interactive Legend Box */}
       <LegendPanel phase={phase} hasPair={Boolean(cuts)} cuts={cuts} />
     </group>
   );
 }
 
-/** * HELPER SUB-COMPONENTS
- * These are restored to full complexity and fixed to use DNA_CONFIG constants.
- */
-
+// ── Sub-components (unchanged) ───────────────────────────────────
 function DNAHelixSegment({ yFrom, yTo, accent }: { yFrom: number; yTo: number; accent?: boolean }) {
-  const curveA = useMemo(() => makeHelixCurve(yFrom, yTo, 0), [yFrom, yTo]);
-  const curveB = useMemo(() => makeHelixCurve(yFrom, yTo, Math.PI), [yFrom, yTo]);
-
+  const curveA = useMemo(() => makeHelixCurve(yFrom, yTo, 0),        [yFrom, yTo]);
+  const curveB = useMemo(() => makeHelixCurve(yFrom, yTo, Math.PI),  [yFrom, yTo]);
   return (
     <group>
       <mesh>
@@ -197,13 +354,17 @@ function BasePairs({ yFrom, yTo, accent }: any) {
   const rungs = useMemo(() => {
     const arr = [];
     for (let i = 0; i < count; i++) {
-      const t = i / (count - 1 || 1);
-      const y = lerp(yFrom, yTo, t);
-      const u = (y + DNA_CONFIG.H / 2) / DNA_CONFIG.H;
+      const t   = i / (count - 1 || 1);
+      const y   = lerp(yFrom, yTo, t);
+      const u   = (y + DNA_CONFIG.H / 2) / DNA_CONFIG.H;
       const ang = u * DNA_CONFIG.turns * Math.PI * 2;
-      const pA = new THREE.Vector3(Math.cos(ang) * DNA_CONFIG.radius, y, Math.sin(ang) * DNA_CONFIG.radius * DNA_CONFIG.zScale);
-      const pB = new THREE.Vector3(Math.cos(ang + Math.PI) * DNA_CONFIG.radius, y, Math.sin(ang + Math.PI) * DNA_CONFIG.radius * DNA_CONFIG.zScale);
-      arr.push({ pos: pA.clone().add(pB).multiplyScalar(0.5), quat: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), pB.clone().sub(pA).normalize()), len: pB.distanceTo(pA) });
+      const pA  = new THREE.Vector3(Math.cos(ang) * DNA_CONFIG.radius,          y, Math.sin(ang) * DNA_CONFIG.radius * DNA_CONFIG.zScale);
+      const pB  = new THREE.Vector3(Math.cos(ang + Math.PI) * DNA_CONFIG.radius, y, Math.sin(ang + Math.PI) * DNA_CONFIG.radius * DNA_CONFIG.zScale);
+      arr.push({
+        pos:  pA.clone().add(pB).multiplyScalar(0.5),
+        quat: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), pB.clone().sub(pA).normalize()),
+        len:  pB.distanceTo(pA),
+      });
     }
     return arr;
   }, [yFrom, yTo, count]);
@@ -221,14 +382,13 @@ function BasePairs({ yFrom, yTo, accent }: any) {
 }
 
 function LegendPanel({ phase, hasPair, cuts }: any) {
-  const statusItems = [
+  const items = [
     { id: "target", label: "gRNA Search" },
-    { id: "bind", label: "Cas9 Binding" },
-    { id: "cut", label: "DNA Cleavage" },
+    { id: "bind",   label: "Cas9 Binding" },
+    { id: "cut",    label: "DNA Cleavage" },
     { id: "delete", label: "Excision" },
-    { id: "ligate", label: "Repair (NHEJ)" }
+    { id: "ligate", label: "Repair (NHEJ)" },
   ];
-
   return (
     <group position={[-4.5, 2.0, 0]}>
       <mesh position={[1.2, -1.0, -0.2]}>
@@ -236,20 +396,26 @@ function LegendPanel({ phase, hasPair, cuts }: any) {
         <meshStandardMaterial color="#05060A" transparent opacity={0.7} />
       </mesh>
       <OutlinedText pos={[0, 0.4, 0]} size={0.24} color="#FFFFFF" text="SIMULATION LOG" anchor="left" />
-      {statusItems.map((item, i) => {
+      {items.map((item, i) => {
         const active = hasPair && checkPhase(phase, item.id);
         return (
-          <OutlinedText key={item.id} pos={[0, -0.2 - i * 0.4, 0]} size={0.16} color={active ? "#4ADE80" : "#475569"} text={`${active ? "✓" : "○"} ${item.label}`} anchor="left" />
+          <OutlinedText key={item.id} pos={[0, -0.2 - i * 0.4, 0]} size={0.16}
+            color={active ? "#4ADE80" : "#475569"}
+            text={`${active ? "✓" : "○"} ${item.label}`}
+            anchor="left"
+          />
         );
       })}
       {cuts && (
-        <OutlinedText pos={[0, -2.4, 0]} size={0.14} color="#FBBF24" text={`Sequence Span: ${Math.abs(cuts.b - cuts.a)} bp`} anchor="left" />
+        <OutlinedText pos={[0, -2.4, 0]} size={0.14} color="#FBBF24"
+          text={`Sequence Span: ${Math.abs(cuts.b - cuts.a)} bp`}
+          anchor="left"
+        />
       )}
     </group>
   );
 }
 
-/** Visual markers using shared constants **/
 function CutMarker({ y, flash, label, side }: any) {
   return (
     <group position={[0, y, 0]}>
@@ -265,7 +431,10 @@ function CutMarker({ y, flash, label, side }: any) {
 function PAMHint({ y, side }: any) {
   return (
     <group position={[side * (DNA_CONFIG.radius + 0.6), y, 0]}>
-      <mesh><boxGeometry args={[0.2, 0.2, 0.2]} /><meshStandardMaterial color="#FBBF24" emissive="#FBBF24" emissiveIntensity={0.5} /></mesh>
+      <mesh>
+        <boxGeometry args={[0.2, 0.2, 0.2]} />
+        <meshStandardMaterial color="#FBBF24" emissive="#FBBF24" emissiveIntensity={0.5} />
+      </mesh>
       <OutlinedText pos={[side * 0.3, 0.2, 0]} size={0.12} color="#FDE68A" text="PAM" anchor={side > 0 ? "left" : "right"} />
     </group>
   );
@@ -281,7 +450,11 @@ function DeletionGlow({ yMin, yMax, flash }: any) {
 }
 
 function GuideRNA({ yTarget, zIn, xFrom, xTo, intensity }: any) {
-  const curve = useMemo(() => new THREE.CatmullRomCurve3([new THREE.Vector3(xFrom, yTarget + 1.5, zIn), new THREE.Vector3(xFrom + 1.5, yTarget + 0.5, zIn - 1), new THREE.Vector3(xTo, yTarget, 0.9)]), [yTarget, zIn, xFrom, xTo]);
+  const curve = useMemo(() => new THREE.CatmullRomCurve3([
+    new THREE.Vector3(xFrom, yTarget + 1.5, zIn),
+    new THREE.Vector3(xFrom + 1.5, yTarget + 0.5, zIn - 1),
+    new THREE.Vector3(xTo, yTarget, 0.9),
+  ]), [yTarget, zIn, xFrom, xTo]);
   return (
     <mesh>
       <tubeGeometry args={[curve, 64, 0.06, 12, false]} />
@@ -293,23 +466,33 @@ function GuideRNA({ yTarget, zIn, xFrom, xTo, intensity }: any) {
 function Cas9Clamp({ yTarget, zIn, flash, x }: any) {
   return (
     <group position={[x, yTarget, zIn]}>
-      <mesh><torusGeometry args={[0.75, 0.18, 16, 48]} /><meshStandardMaterial color={flash > 0.3 ? "#FFD86B" : "#6366F1"} metalness={0.9} roughness={0.1} /></mesh>
-      <mesh><sphereGeometry args={[0.45, 32, 32]} /><meshStandardMaterial color="#E0E7FF" transparent opacity={0.9} /></mesh>
+      <mesh>
+        <torusGeometry args={[0.75, 0.18, 16, 48]} />
+        <meshStandardMaterial color={flash > 0.3 ? "#FFD86B" : "#6366F1"} metalness={0.9} roughness={0.1} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[0.45, 32, 32]} />
+        <meshStandardMaterial color="#E0E7FF" transparent opacity={0.9} />
+      </mesh>
       <OutlinedText pos={[1.0, 0, 0]} size={0.18} color="#FFFFFF" text="Cas9" anchor="left" />
     </group>
   );
 }
 
 function OutlinedText({ pos, size, color, text, anchor }: any) {
-  return <Text position={pos} fontSize={size} color={color} anchorX={anchor} outlineWidth={0.02} outlineColor="#000000">{text}</Text>;
+  return (
+    <Text position={pos} fontSize={size} color={color} anchorX={anchor} outlineWidth={0.02} outlineColor="#000000">
+      {text}
+    </Text>
+  );
 }
 
 function makeHelixCurve(yFrom: number, yTo: number, phase: number) {
   const pts = [];
   for (let i = 0; i <= 120; i++) {
-    const t = i / 120;
-    const y = lerp(yFrom, yTo, t);
-    const u = (y + DNA_CONFIG.H / 2) / DNA_CONFIG.H;
+    const t   = i / 120;
+    const y   = lerp(yFrom, yTo, t);
+    const u   = (y + DNA_CONFIG.H / 2) / DNA_CONFIG.H;
     const ang = u * DNA_CONFIG.turns * Math.PI * 2 + phase;
     pts.push(new THREE.Vector3(Math.cos(ang) * DNA_CONFIG.radius, y, Math.sin(ang) * DNA_CONFIG.radius * DNA_CONFIG.zScale));
   }
