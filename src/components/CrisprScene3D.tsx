@@ -5,13 +5,15 @@ import * as THREE from "three";
 import type { PairInfo } from "../types";
 
 // ── B-form DNA parameters ─────────────────────────────────────────
+// B-DNA: pitch ≈ 3.4 nm/turn, diameter ≈ 2 nm → pitch/diameter ≈ 1.7
+// With radius=1.5 (diameter=3.0) and 3 turns → pitch = H/turns = 10/3 = 3.33
+// Rung spacing = pitch / bpPerTurn = 3.33 / 9 = 0.37  (rung Ø=0.16 → no overlap ✓)
 const DNA = {
-  H: 12.0,        // total height
-  turns: 7.2,     // helical turns (B-DNA: ~10 bp/turn)
-  radius: 1.55,   // phosphate backbone radius
-  backboneR: 0.12, // backbone tube radius
-  rungR: 0.065,   // base-pair half-rung radius
-  nodeR: 0.095,   // phosphate sphere radius
+  H: 10.0,
+  turns: 3.0,      // 3 clean full turns — open grooves clearly visible
+  radius: 1.52,    // diameter 3.04 → pitch/diameter = 1.10 (close to B-DNA)
+  backboneR: 0.130, // slim but visible backbone
+  rungR: 0.080,    // clean rungs with breathing room between them
 };
 
 // IUPAC base colors
@@ -110,19 +112,19 @@ export default function CrisprScene3D(props: { pair: PairInfo | null; seqLength:
     }}>
       <Canvas dpr={[1, 2]} shadows>
         <color attach="background" args={["#030407"]} />
-        <PerspectiveCamera makeDefault position={[0, 0, 9]} fov={44} />
+        <PerspectiveCamera makeDefault position={[0, 0, 13]} fov={46} />
 
-        <ambientLight intensity={0.45} />
-        <spotLight position={[10, 16, 10]} angle={0.22} penumbra={1} intensity={2.2} castShadow />
-        <pointLight position={[-8, -5, 5]}  color="#FF2D55" intensity={1.8} />
-        <pointLight position={[8, 5, 5]}    color="#007AFF" intensity={1.8} />
-        <pointLight position={[0, 0, -6]}   color="#7c3aed" intensity={0.8} />
+        <ambientLight intensity={0.70} />
+        <spotLight position={[8, 14, 8]} angle={0.30} penumbra={0.8} intensity={1.8} castShadow />
+        <pointLight position={[-6, 4, 6]}  color="#f97316" intensity={1.2} />
+        <pointLight position={[6, -4, 6]}  color="#38bdf8" intensity={1.2} />
+        <pointLight position={[0, 8, 4]}   color="#ffffff" intensity={0.6} />
 
         <Environment preset="night" />
 
         <GroupCrisprScene cuts={cuts} paused={paused} resetToken={resetToken} onPhaseChange={setPhaseOut} />
 
-        <OrbitControls enablePan={false} minDistance={5} maxDistance={16}
+        <OrbitControls enablePan={false} minDistance={7} maxDistance={20}
           maxPolarAngle={Math.PI * 0.65} minPolarAngle={Math.PI * 0.28} />
         <ContactShadows opacity={0.5} scale={25} blur={2} far={10} resolution={256} color="#000000" />
       </Canvas>
@@ -368,70 +370,35 @@ function DNAHelixSegment({ yFrom, yTo, accent, healed }: {
   const curveA = useMemo(() => makeHelixCurve(yFrom, yTo, 0),       [yFrom, yTo]);
   const curveB = useMemo(() => makeHelixCurve(yFrom, yTo, Math.PI), [yFrom, yTo]);
 
-  const colA = accent ? "#38bdf8" : healed ? "#c4b5fd" : "#0ea5e9";
-  const colB = accent ? "#fb7185" : healed ? "#f9a8d4" : "#e11d48";
-  const emA  = accent ? "#0ea5e9" : healed ? "#7c3aed" : "#082244";
-  const emB  = accent ? "#e11d48" : healed ? "#9d174d" : "#440814";
-  const emI  = accent ? 0.7       : healed ? 0.55      : 0.35;
+  // Vivid orange + sky-blue like reference image; violet when healed
+  const colA = accent ? "#60a5fa" : healed ? "#c4b5fd" : "#f97316";
+  const colB = accent ? "#f472b6" : healed ? "#f9a8d4" : "#38bdf8";
+  const emA  = accent ? "#1d4ed8" : healed ? "#6d28d9" : "#7c2d12";
+  const emB  = accent ? "#be185d" : healed ? "#9d174d" : "#0c4a6e";
+  const emI  = accent ? 0.55      : healed ? 0.50      : 0.25;
 
   return (
     <group>
       <mesh>
-        <tubeGeometry args={[curveA, 220, DNA.backboneR, 14, false]} />
-        <meshStandardMaterial color={colA} metalness={0.75} roughness={0.15}
+        <tubeGeometry args={[curveA, 240, DNA.backboneR, 16, false]} />
+        <meshStandardMaterial color={colA} metalness={0.05} roughness={0.18}
           emissive={emA} emissiveIntensity={emI} />
       </mesh>
       <mesh>
-        <tubeGeometry args={[curveB, 220, DNA.backboneR, 14, false]} />
-        <meshStandardMaterial color={colB} metalness={0.75} roughness={0.15}
+        <tubeGeometry args={[curveB, 240, DNA.backboneR, 16, false]} />
+        <meshStandardMaterial color={colB} metalness={0.05} roughness={0.18}
           emissive={emB} emissiveIntensity={emI} />
       </mesh>
       <BasePairs yFrom={yFrom} yTo={yTo} accent={accent} />
-      <PhosphateNodes yFrom={yFrom} yTo={yTo} colorA={colA} colorB={colB} />
     </group>
   );
 }
 
-// ── PhosphateNodes — sphere bumps along each backbone ─────────────
-function PhosphateNodes({ yFrom, yTo, colorA, colorB }: any) {
-  const count = Math.max(2, Math.round(Math.abs(yTo - yFrom) * 4.5));
-
-  const [nodesA, nodesB] = useMemo(() => {
-    const a: THREE.Vector3[] = [], b: THREE.Vector3[] = [];
-    for (let i = 0; i <= count; i++) {
-      const t   = i / count;
-      const y   = lerp(yFrom, yTo, t);
-      const u   = (y + DNA.H / 2) / DNA.H;
-      const ang = u * DNA.turns * Math.PI * 2;
-      a.push(new THREE.Vector3(Math.cos(ang) * DNA.radius, y, Math.sin(ang) * DNA.radius));
-      b.push(new THREE.Vector3(Math.cos(ang + Math.PI) * DNA.radius, y, Math.sin(ang + Math.PI) * DNA.radius));
-    }
-    return [a, b];
-  }, [yFrom, yTo, count]);
-
-  return (
-    <group>
-      {nodesA.map((p, i) => (
-        <mesh key={`a${i}`} position={p}>
-          <sphereGeometry args={[DNA.nodeR, 8, 8]} />
-          <meshStandardMaterial color={colorA} metalness={0.85} roughness={0.1}
-            emissive={colorA} emissiveIntensity={0.25} />
-        </mesh>
-      ))}
-      {nodesB.map((p, i) => (
-        <mesh key={`b${i}`} position={p}>
-          <sphereGeometry args={[DNA.nodeR, 8, 8]} />
-          <meshStandardMaterial color={colorB} metalness={0.85} roughness={0.1}
-            emissive={colorB} emissiveIntensity={0.25} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-// ── BasePairs — two-colored A/T/G/C half-rungs ────────────────────
+// ── BasePairs — two-colored A/T/G/C half-rungs (no labels, clean) ─
 function BasePairs({ yFrom, yTo, accent }: any) {
-  const count = Math.max(2, Math.floor(Math.abs(yTo - yFrom) * 9.5));
+  // 10 bp per turn (B-DNA), proportional to segment length
+  // Full helix (H=10, turns=3): 3×10=30 rungs, spacing=3.33/10=0.33 >> rungØ=0.16 ✓
+  const count = Math.max(2, Math.round(Math.abs(yTo - yFrom) / DNA.H * DNA.turns * 10));
 
   const rungs = useMemo(() => {
     const arr = [];
@@ -445,22 +412,12 @@ function BasePairs({ yFrom, yTo, accent }: any) {
       const dir  = pB.clone().sub(pA).normalize();
       const len  = pB.distanceTo(pA);
       const half = len / 2;
-      const mid  = pA.clone().add(pB).multiplyScalar(0.5);
       const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-
-      // Half-rung centers: quarter of the way from each end to center
+      // Each half-rung center sits at 25% / 75% of the full span
       const posHalfA = pA.clone().add(dir.clone().multiplyScalar(half * 0.5));
       const posHalfB = pB.clone().sub(dir.clone().multiplyScalar(half * 0.5));
-
       const [baseA, baseB] = getBP(i);
-
-      // Label positions: slightly outside each backbone
-      const outA = pA.clone();
-      outA.x *= 1.35; outA.z *= 1.35;
-      const outB = pB.clone();
-      outB.x *= 1.35; outB.z *= 1.35;
-
-      arr.push({ posHalfA, posHalfB, mid, quat, half, baseA, baseB, outA, outB, i });
+      arr.push({ posHalfA, posHalfB, quat, half, baseA, baseB, i });
     }
     return arr;
   }, [yFrom, yTo, count]);
@@ -469,49 +426,24 @@ function BasePairs({ yFrom, yTo, accent }: any) {
     <group>
       {rungs.map((r) => (
         <group key={r.i}>
-          {/* Half rung toward strand A */}
           <mesh position={r.posHalfA} quaternion={r.quat}>
-            <cylinderGeometry args={[DNA.rungR, DNA.rungR, r.half, 8]} />
+            <cylinderGeometry args={[DNA.rungR, DNA.rungR, r.half, 10]} />
             <meshStandardMaterial
               color={accent ? "#e2e8f0" : BASE_CLR[r.baseA]}
-              metalness={0.25} roughness={0.55}
+              metalness={0.05} roughness={0.30}
               emissive={accent ? "#94a3b8" : BASE_CLR[r.baseA]}
-              emissiveIntensity={accent ? 0.25 : 0.12}
+              emissiveIntensity={accent ? 0.20 : 0.10}
             />
           </mesh>
-          {/* Half rung toward strand B */}
           <mesh position={r.posHalfB} quaternion={r.quat}>
-            <cylinderGeometry args={[DNA.rungR, DNA.rungR, r.half, 8]} />
+            <cylinderGeometry args={[DNA.rungR, DNA.rungR, r.half, 10]} />
             <meshStandardMaterial
               color={accent ? "#e2e8f0" : BASE_CLR[r.baseB]}
-              metalness={0.25} roughness={0.55}
+              metalness={0.05} roughness={0.30}
               emissive={accent ? "#94a3b8" : BASE_CLR[r.baseB]}
-              emissiveIntensity={accent ? 0.25 : 0.12}
+              emissiveIntensity={accent ? 0.20 : 0.10}
             />
           </mesh>
-          {/* Center hydrogen bond connector */}
-          <mesh position={r.mid}>
-            <sphereGeometry args={[DNA.rungR * 1.2, 7, 7]} />
-            <meshStandardMaterial color="#e2e8f0" metalness={0.4} roughness={0.4}
-              transparent opacity={0.7} />
-          </mesh>
-          {/* Base labels every 5th rung */}
-          {!accent && r.i % 5 === 0 && (
-            <>
-              <Text position={[r.outA.x, r.outA.y, r.outA.z]}
-                fontSize={0.095} color={BASE_CLR[r.baseA]}
-                anchorX="center" anchorY="middle"
-                outlineWidth={0.015} outlineColor="#000000">
-                {r.baseA}
-              </Text>
-              <Text position={[r.outB.x, r.outB.y, r.outB.z]}
-                fontSize={0.095} color={BASE_CLR[r.baseB]}
-                anchorX="center" anchorY="middle"
-                outlineWidth={0.015} outlineColor="#000000">
-                {r.baseB}
-              </Text>
-            </>
-          )}
         </group>
       ))}
     </group>
