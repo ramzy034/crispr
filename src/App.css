@@ -632,8 +632,6 @@ body::before {
 }
 
 /* Content blocks */
-.cm-section-content { }
-
 .cm-section-heading {
   font-size: 1.45rem;
   font-weight: 800;
