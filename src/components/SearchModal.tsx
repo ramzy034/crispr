@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Search, X, BookOpen, GraduationCap } from "lucide-react";
 import { useLang } from "../lib/LangContext";
 import { UI } from "../lib/translations";
