@@ -5,6 +5,8 @@ import type { Chapter } from "../../lib/learningData";
 import QuizBlock from "./QuizBlock";
 import AnimatedDNA from "./AnimatedDNA";
 import SVGDiagrams from "./SVGDiagrams";
+import { useLang } from "../../lib/LangContext";
+import { UI } from "../../lib/translations";
 
 type Props = {
   chapter: Chapter;
@@ -13,6 +15,8 @@ type Props = {
 };
 
 export default function ConceptModal({ chapter, onClose, onComplete }: Props) {
+  const { lang } = useLang();
+  const T = UI[lang];
   const [sectionIndex, setSectionIndex] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
 
@@ -48,7 +52,7 @@ export default function ConceptModal({ chapter, onClose, onComplete }: Props) {
                 <div className="cm-section-name">{section.heading}</div>
               )}
               {showQuiz && (
-                <div className="cm-section-name">Knowledge Check</div>
+                <div className="cm-section-name">{T.cmKnowledgeCheck}</div>
               )}
             </div>
           </div>
@@ -200,7 +204,7 @@ export default function ConceptModal({ chapter, onClose, onComplete }: Props) {
               onClick={() => sectionIndex > 0 && setSectionIndex(i => i - 1)}
               disabled={sectionIndex === 0}
             >
-              <ChevronLeft size={16} /> Back
+              <ChevronLeft size={16} /> {T.cmBack}
             </button>
             <span className="cm-nav-count">
               {sectionIndex + 1} / {chapter.sections.length}
@@ -211,7 +215,7 @@ export default function ConceptModal({ chapter, onClose, onComplete }: Props) {
                 style={{ background: chapter.color }}
                 onClick={() => setSectionIndex(i => i + 1)}
               >
-                Next <ChevronRight size={16} />
+                {T.cmNext} <ChevronRight size={16} />
               </button>
             ) : (
               <button
@@ -219,7 +223,7 @@ export default function ConceptModal({ chapter, onClose, onComplete }: Props) {
                 style={{ background: chapter.color }}
                 onClick={() => setShowQuiz(true)}
               >
-                Take Quiz <HelpCircle size={15} />
+                {T.cmTakeQuiz} <HelpCircle size={15} />
               </button>
             )}
           </div>

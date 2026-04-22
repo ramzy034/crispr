@@ -1,7 +1,17 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, XCircle, Trophy } from "lucide-react";
+import { CheckCircle, XCircle, Trophy, Shuffle } from "lucide-react";
 import type { QuizQuestion } from "../../lib/learningData";
+import { useLang } from "../../lib/LangContext";
+import { UI } from "../../lib/translations";
+
+// How many questions to draw per attempt (random subset when pool is larger)
+const QUESTIONS_PER_ATTEMPT = 3;
+
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(n, arr.length));
+}
 
 type Props = {
   questions: QuizQuestion[];
@@ -10,6 +20,19 @@ type Props = {
 };
 
 export default function QuizBlock({ questions, color, onPass }: Props) {
+  const { lang } = useLang();
+  const T = UI[lang];
+
+  // Randomized subset — regenerated on each retry via retryKey
+  const [retryKey, setRetryKey] = useState(0);
+  const active = useMemo(
+    () => questions.length > QUESTIONS_PER_ATTEMPT
+      ? pickRandom(questions, QUESTIONS_PER_ATTEMPT)
+      : [...questions].sort(() => Math.random() - 0.5),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [retryKey, questions],
+  );
+
   const [qi, setQi] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -17,7 +40,17 @@ export default function QuizBlock({ questions, color, onPass }: Props) {
   const [done, setDone] = useState(false);
   const [answers, setAnswers] = useState<boolean[]>([]);
 
-  const q = questions[qi];
+  const handleRetry = () => {
+    setRetryKey(k => k + 1); // triggers new random set
+    setQi(0);
+    setSelected(null);
+    setSubmitted(false);
+    setScore(0);
+    setDone(false);
+    setAnswers([]);
+  };
+
+  const q = active[qi];
 
   const handleSubmit = () => {
     if (selected === null) return;
@@ -28,7 +61,7 @@ export default function QuizBlock({ questions, color, onPass }: Props) {
   };
 
   const handleNext = () => {
-    if (qi + 1 < questions.length) {
+    if (qi + 1 < active.length) {
       setQi(i => i + 1);
       setSelected(null);
       setSubmitted(false);
@@ -38,8 +71,8 @@ export default function QuizBlock({ questions, color, onPass }: Props) {
   };
 
   if (done) {
-    const pct = Math.round((score / questions.length) * 100);
-    const passed = score >= Math.ceil(questions.length * 0.6);
+    const pct = Math.round((score / active.length) * 100);
+    const passed = score >= Math.ceil(active.length * 0.6);
     return (
       <motion.div
         className="qb-results"
@@ -49,18 +82,23 @@ export default function QuizBlock({ questions, color, onPass }: Props) {
         <div className="qb-score-ring" style={{ "--ring-color": passed ? color : "#ef9a9a", "--ring-pct": `${pct}` } as React.CSSProperties}>
           <Trophy size={28} color={passed ? color : "#ef9a9a"} />
           <div className="qb-score-number" style={{ color: passed ? color : "#ef9a9a" }}>
-            {score}/{questions.length}
+            {score}/{active.length}
           </div>
         </div>
 
         <h3 className="qb-result-title">
-          {pct === 100 ? "Perfect Score! 🎉" : passed ? "Module Passed! ✓" : "Keep Learning 📚"}
+          {pct === 100 ? T.qbPerfect : passed ? T.qbPassed : T.qbFailed}
         </h3>
         <p className="qb-result-sub">
-          {passed
-            ? "You've demonstrated a solid understanding of this topic."
-            : "Review the material and try again — the concepts take time to stick."}
+          {passed ? T.qbPassSub : T.qbFailSub}
         </p>
+
+        {questions.length > QUESTIONS_PER_ATTEMPT && (
+          <p className="qb-pool-note">
+            <Shuffle size={11} style={{ display: "inline", marginRight: 4 }} />
+            {active.length} of {questions.length} questions drawn at random — retry for a different set.
+          </p>
+        )}
 
         <div className="qb-answer-row">
           {answers.map((correct, i) => (
@@ -70,28 +108,49 @@ export default function QuizBlock({ questions, color, onPass }: Props) {
           ))}
         </div>
 
-        <button
-          className="qb-complete-btn"
-          style={{ background: color }}
-          onClick={onPass}
-        >
-          {passed ? "Complete Module →" : "Complete Anyway →"}
-        </button>
+        <div className="qb-result-actions">
+          <button className="qb-retry-btn" onClick={handleRetry}>
+            ↺ {T.qbRetry}
+            {questions.length > QUESTIONS_PER_ATTEMPT && <span className="qb-retry-shuffle"> · new questions</span>}
+          </button>
+          <button
+            className="qb-complete-btn"
+            style={{ background: color }}
+            onClick={onPass}
+          >
+            {passed ? T.qbComplete : T.qbCompleteAnyway}
+          </button>
+        </div>
       </motion.div>
     );
   }
 
   return (
     <div className="qb-wrap">
-      {/* Progress dots */}
-      <div className="qb-dots">
-        {questions.map((_, i) => (
-          <div
-            key={i}
-            className={`qb-q-dot ${i < qi ? "qb-dot-done" : ""} ${i === qi ? "qb-dot-current" : ""}`}
-            style={i === qi ? { background: color } : {}}
-          />
-        ))}
+      {/* Progress dots + running score */}
+      <div className="qb-progress-row">
+        <div className="qb-dots">
+          {active.map((_, i) => (
+            <div
+              key={i}
+              className={`qb-q-dot ${i < qi ? "qb-dot-done" : ""} ${i === qi ? "qb-dot-current" : ""}`}
+              style={i === qi ? { background: color } : {}}
+            />
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {questions.length > QUESTIONS_PER_ATTEMPT && (
+            <span className="qb-pool-badge" title={`${questions.length} questions in pool — ${active.length} drawn randomly`}>
+              <Shuffle size={10} /> {active.length}/{questions.length}
+            </span>
+          )}
+          {answers.length > 0 && (
+            <div className="qb-running-score">
+              <span style={{ color: score === answers.length ? "#4ADE80" : "#ffca28" }}>{score}</span>
+              <span className="qb-running-denom">/{answers.length}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -103,7 +162,7 @@ export default function QuizBlock({ questions, color, onPass }: Props) {
           transition={{ duration: 0.2 }}
         >
           <div className="qb-q-label" style={{ color }}>
-            Question {qi + 1} <span className="qb-q-label-of">of {questions.length}</span>
+            {T.qbQuestion} {qi + 1} <span className="qb-q-label-of">{T.qbOf} {active.length}</span>
           </div>
           <h3 className="qb-question">{q.question}</h3>
 
@@ -162,7 +221,7 @@ export default function QuizBlock({ questions, color, onPass }: Props) {
             whileHover={selected !== null ? { scale: 1.03 } : {}}
             whileTap={selected !== null ? { scale: 0.97 } : {}}
           >
-            Submit Answer
+            {T.qbSubmit}
           </motion.button>
         ) : (
           <motion.button
@@ -174,7 +233,7 @@ export default function QuizBlock({ questions, color, onPass }: Props) {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
           >
-            {qi + 1 < questions.length ? "Next Question →" : "See Results →"}
+            {qi + 1 < active.length ? T.qbNextQ : T.qbSeeResults}
           </motion.button>
         )}
       </div>

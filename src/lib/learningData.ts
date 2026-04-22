@@ -183,6 +183,39 @@ export const CHAPTERS: Chapter[] = [
         correct: 1,
         explanation: "Jennifer Doudna (UC Berkeley) and Emmanuelle Charpentier (Max Planck Institute) jointly received the 2020 Nobel Prize in Chemistry for developing CRISPR-Cas9 into a precise gene-editing tool.",
       },
+      {
+        question: "What does the PAM sequence (e.g. NGG for SpCas9) do?",
+        options: [
+          "It is the 20 nt sequence the gRNA binds to",
+          "It is a short motif adjacent to the target that Cas9 must recognise before cutting",
+          "It encodes the Cas9 protein's catalytic domain",
+          "It is the sequence left behind after the DNA is repaired",
+        ],
+        correct: 1,
+        explanation: "PAM (Protospacer Adjacent Motif) is a short sequence (5'-NGG-3' for SpCas9) directly next to the target site on the non-template strand. Cas9 will not cut without recognising the PAM — it acts as a 'landing pad' check that prevents Cas9 from cutting its own genome.",
+      },
+      {
+        question: "A CRISPR guide RNA targeting 'ATGCGTACGATCGGCTATGG' will cut DNA where?",
+        options: [
+          "Anywhere in the genome that has a similar sequence",
+          "Only at the exact 20 nt match followed by an NGG PAM",
+          "Only inside the nucleus of non-dividing cells",
+          "At random sites chosen by Cas9",
+        ],
+        correct: 1,
+        explanation: "The guide RNA must exactly base-pair with its 20 nt target, AND that target must be followed by an NGG PAM. Any mismatch — especially in the 'seed' region (12 nt near the PAM) — dramatically reduces or eliminates cutting efficiency.",
+      },
+      {
+        question: "Why is CRISPR-Cas9 considered more accessible than older editing tools like ZFNs?",
+        options: [
+          "It requires no guide RNA and works automatically",
+          "It is protein-based and avoids DNA entirely",
+          "The targeting is programmed by a cheap synthetic RNA, not by expensive protein engineering",
+          "CRISPR only works in plant and yeast cells, which are easier to culture",
+        ],
+        correct: 2,
+        explanation: "Zinc finger nucleases (ZFNs) and TALENs require custom protein engineering for each new target — months of work costing tens of thousands of dollars. CRISPR replaces that protein engineering with a simple 20 nt RNA oligo that can be ordered and delivered in days for under $100.",
+      },
     ],
   },
   {
@@ -308,6 +341,39 @@ export const CHAPTERS: Chapter[] = [
         correct: 2,
         explanation: "BCL11A suppresses fetal hemoglobin (HbF) after birth. Deleting its erythroid enhancer de-represses HbF, which compensates for faulty adult hemoglobin — a complete functional cure strategy.",
       },
+      {
+        question: "You want to delete a 500 bp enhancer. Why should you place your guide RNAs at the EDGES of the enhancer, not inside it?",
+        options: [
+          "Guides inside the enhancer would have worse GC content",
+          "Guides at the edges flank the target — both cuts release the segment between them",
+          "Guides inside would cut too many times and destroy the whole chromosome",
+          "The PAM sequence is never found inside enhancers",
+        ],
+        correct: 1,
+        explanation: "Paired deletion requires two DSBs flanking the region to be removed. Guide 1 cuts just upstream (5') of the enhancer, Guide 2 cuts just downstream (3'). NHEJ then joins the two free ends, dropping the enhancer. Guides inside the enhancer would create internal cuts but leave the flanking sequence intact.",
+      },
+      {
+        question: "How do you verify a successful paired deletion by PCR?",
+        options: [
+          "The PCR product disappears entirely when the deletion works",
+          "A primer pair flanking the deletion site produces a shorter band in edited cells vs. a longer band in wild-type",
+          "You use qPCR to measure gene expression",
+          "The deletion causes cells to glow under UV light",
+        ],
+        correct: 1,
+        explanation: "Design primers that sit outside both cut sites. In wild-type cells the PCR amplifies the full region (longer band). In successfully deleted cells the region between the cuts is gone, so the PCR product is shorter. Comparing both bands on a gel confirms editing efficiency.",
+      },
+      {
+        question: "What is a likely consequence of targeting a late exon (e.g. exon 50 of 54) for a knockout?",
+        options: [
+          "The protein is completely destroyed",
+          "The cell cannot repair the cut at all",
+          "Exon skipping by the ribosome may produce a truncated but still partially functional protein",
+          "Late exons are impossible to target with CRISPR",
+        ],
+        correct: 2,
+        explanation: "Targeting a late exon risks creating a 'hypomorphic' allele — the cell's splicing machinery skips the damaged exon and produces a truncated protein that retains partial function. For a clean knockout, target early coding exons (exon 1 or 2) or splice donor/acceptor sites to force a frameshift.",
+      },
     ],
   },
   {
@@ -432,6 +498,39 @@ export const CHAPTERS: Chapter[] = [
         ],
         correct: 1,
         explanation: "HDR relies on cellular machinery that is only available during DNA replication (S phase) and the subsequent G2 phase. Post-mitotic cells (neurons, cardiomyocytes) are permanently in G0/G1, making HDR essentially unavailable.",
+      },
+      {
+        question: "After Cas9 cuts DNA using NHEJ repair, what is the most common molecular outcome?",
+        options: [
+          "A perfect copy of the original sequence is restored",
+          "A large chromosomal deletion always occurs",
+          "Small random insertions or deletions (indels) at the cut site",
+          "The two chromosome ends remain permanently unjoined",
+        ],
+        correct: 2,
+        explanation: "NHEJ is error-prone. Before ligating the two ends, exonucleases may chew back a few bases, or polymerases add random bases. The result is small indels (1–20 bp) at the cut site. If the indel shifts the reading frame by +1 or +2 nt, it creates a premature stop codon and effectively knocks out the gene.",
+      },
+      {
+        question: "A researcher delivers Cas9 + a 150 bp ssODN donor. What repair pathway are they trying to use?",
+        options: [
+          "NHEJ — the ssODN acts as a backup if NHEJ fails",
+          "HDR — the ssODN is used as a template to copy the desired sequence into the cut site",
+          "BER (Base Excision Repair) — the ssODN replaces damaged bases",
+          "MMEJ — the microhomology ends of the ssODN drive deletion",
+        ],
+        correct: 1,
+        explanation: "Short single-stranded oligodeoxynucleotides (ssODNs) with ~75 bp homology arms flanking the cut site serve as HDR donor templates. The cell's homology-directed repair copies the sequence between the arms into the genome, installing the desired point mutation or short insertion.",
+      },
+      {
+        question: "What percentage of cells typically undergo successful HDR in primary human stem cells?",
+        options: [
+          "~80–95%",
+          "~50–70%",
+          "~1–10%",
+          "0% — HDR never occurs in human cells",
+        ],
+        correct: 2,
+        explanation: "HDR efficiency in primary human cells (HSCs, iPSCs) is typically 1–10% with standard Cas9 + ssODN. This is why base editing and prime editing are preferred for therapeutic SNP corrections — they achieve 40–60% efficiency without requiring a DSB or donor template.",
       },
     ],
   },
@@ -574,6 +673,212 @@ export const CHAPTERS: Chapter[] = [
         ],
         correct: 1,
         explanation: "mRNA is inherently transient — it is translated into protein and then degraded within hours to days. This means Cas9 is only active briefly, which reduces the window for off-target cuts compared to DNA-based delivery that leads to sustained Cas9 expression.",
+      },
+      {
+        question: "Why can't standard SpCas9 edit mitochondrial DNA (mtDNA)?",
+        options: [
+          "mtDNA is circular and CRISPR only cuts linear DNA",
+          "There is no NGG PAM sequence in mitochondria",
+          "Neither Cas9 protein nor gRNA can cross the mitochondrial double membrane",
+          "Mitochondria destroy all foreign proteins immediately",
+        ],
+        correct: 2,
+        explanation: "SpCas9 and its gRNA are synthesized in the cytoplasm. No known mechanism imports large proteins or RNA into the mitochondrial matrix in human cells. The inner mitochondrial membrane is highly restrictive. DdCBE (2020) and mitoTALENs work around this differently — they are engineered to have mitochondrial targeting sequences.",
+      },
+      {
+        question: "A clinical trial uses ex-vivo CRISPR: cells are taken from the patient, edited in a dish, then re-infused. Which delivery method is MOST practical for this approach?",
+        options: [
+          "Intravenous injection of AAV",
+          "Lipid nanoparticles injected directly into the liver",
+          "Electroporation of Cas9 RNP (ribonucleoprotein) into isolated cells",
+          "Oral tablet containing CRISPR components",
+        ],
+        correct: 2,
+        explanation: "Ex-vivo editing uses cells outside the body. Electroporation — applying brief electrical pulses — creates transient pores in cell membranes, allowing Cas9 RNP (Cas9 protein pre-loaded with gRNA) to enter directly. This is highly efficient (>80%), avoids viral vectors, and the Cas9 is cleared quickly. Casgevy uses electroporation of HSCs.",
+      },
+      {
+        question: "What is the maximum DNA payload that AAV can carry, and why is this a problem for CRISPR?",
+        options: [
+          "~4.7 kb — SpCas9 alone is ~4.2 kb, leaving almost no room for promoters, gRNA, and regulatory sequences",
+          "~50 kb — more than enough for any CRISPR component",
+          "~1 kb — too small even for the gRNA alone",
+          "AAV has no size limit; this is a myth",
+        ],
+        correct: 0,
+        explanation: "AAV's packaging limit is ~4.7 kb. SpCas9 coding sequence is ~4.2 kb alone. Adding a promoter (~500 bp), gRNA scaffold, and polyA signal pushes beyond the limit. Solutions include split-intein Cas9 (delivered in two AAVs) or using smaller Cas9 variants like SaCas9 (~3.2 kb).",
+      },
+    ],
+  },
+  {
+    id: "ethics-future",
+    title: "Ethics & Future",
+    subtitle: "Responsibility, equity, and the road ahead",
+    emoji: "⚖️",
+    color: "#f06292",
+    accentDark: "#1a0512",
+    estimatedMinutes: 7,
+    sections: [
+      {
+        heading: "The Germline Editing Debate",
+        visual: "cas9-diagram",
+        content: [
+          {
+            type: "paragraph",
+            text: "Most CRISPR therapies target somatic cells — non-reproductive cells in a living patient. Changes are not inherited. Germline editing targets eggs, sperm, or early embryos, meaning changes are heritable — passed to all future generations. This distinction is at the center of the most important bioethical debate of our time.",
+          },
+          {
+            type: "highlight",
+            text: "In November 2018, Chinese scientist He Jiankui announced the birth of twin girls with CRISPR-edited CCR5 genes — the first heritable human genome edits. The global scientific community condemned this as premature and unethical. He was sentenced to three years in prison.",
+            color: "#f06292",
+          },
+          {
+            type: "comparison",
+            left: {
+              title: "Somatic Editing ✓",
+              color: "#81c784",
+              items: [
+                "Treats living patients only",
+                "Changes are not inherited",
+                "Regulated by FDA/EMA",
+                "Casgevy is an example",
+                "Broadly accepted ethically",
+              ],
+            },
+            right: {
+              title: "Germline Editing ⚠",
+              color: "#ef9a9a",
+              items: [
+                "Changes all future generations",
+                "Cannot be reversed after birth",
+                "Raises 'designer baby' concerns",
+                "Banned in most countries",
+                "No clinical use justified yet",
+              ],
+            },
+          },
+        ],
+      },
+      {
+        heading: "Who Gets Access?",
+        visual: "delivery-diagram",
+        content: [
+          {
+            type: "paragraph",
+            text: "Casgevy — the first FDA-approved CRISPR therapy — costs approximately $2.2 million per patient. While transformative, at this price it is accessible only in the wealthiest healthcare systems. This creates a profound equity challenge: gene editing that can cure disease should not be a privilege of the wealthy.",
+          },
+          {
+            type: "fact-grid",
+            facts: [
+              { label: "Casgevy list price (US)", value: "$2.2M", color: "#f06292" },
+              { label: "Sickle cell patients globally", value: "~300,000", color: "#4fc3f7" },
+              { label: "Living in low-income countries", value: ">70%", color: "#ffb74d" },
+              { label: "Countries with access today", value: "~5", color: "#ef9a9a" },
+            ],
+          },
+          {
+            type: "highlight",
+            text: "The WHO's Human Genome Editing initiative calls for a global registry of all heritable human genome editing research and equitable access frameworks. The technology is advancing faster than the governance systems meant to guide it.",
+            color: "#ffb74d",
+          },
+        ],
+      },
+      {
+        heading: "The Future of CRISPR",
+        visual: "dna-animation",
+        content: [
+          {
+            type: "paragraph",
+            text: "CRISPR is not standing still. Beyond cutting DNA, next-generation tools are expanding what's possible — from single-letter corrections to RNA editing without touching the genome at all.",
+          },
+          {
+            type: "steps",
+            steps: [
+              {
+                icon: "🔤",
+                title: "Base Editing",
+                body: "Converts a single DNA base (A→G or C→T) without creating a double-strand break. Developed by David Liu at Harvard. More precise for correcting single-point mutations.",
+              },
+              {
+                icon: "✏️",
+                title: "Prime Editing",
+                body: "A 'search and replace' tool using a modified Cas9 (nickase) + pegRNA. Can write any of the 12 possible point mutations, plus small insertions/deletions, without a donor template.",
+              },
+              {
+                icon: "🧬",
+                title: "Cas13 — RNA Editing",
+                body: "Targets RNA instead of DNA. Can silence or edit gene expression without permanent genome changes. Explored for antiviral therapies and transient gene modulation.",
+              },
+              {
+                icon: "🌱",
+                title: "Crops & Agriculture",
+                body: "CRISPR is creating disease-resistant wheat, drought-tolerant corn, and allergen-free peanuts. USDA-approved CRISPR crops need no special labeling if no foreign DNA is introduced.",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    quiz: [
+      {
+        question: "What is the key ethical distinction between somatic and germline CRISPR editing?",
+        options: [
+          "Somatic editing is more expensive than germline editing",
+          "Germline edits are heritable — passed to all future generations",
+          "Somatic editing uses Cas9 while germline editing uses Cas12a",
+          "Germline editing requires a different PAM sequence",
+        ],
+        correct: 1,
+        explanation: "Somatic cell edits affect only the treated patient and cannot be inherited. Germline edits (in eggs, sperm, or embryos) change the heritable genome — affecting all future descendants. This is why germline editing is banned or tightly restricted in most countries.",
+      },
+      {
+        question: "Approximately how much does the first approved CRISPR therapy (Casgevy) cost per patient?",
+        options: ["$50,000", "$500,000", "$2.2 million", "$10 million"],
+        correct: 2,
+        explanation: "Casgevy's list price is approximately $2.2 million per patient. This raises serious equity concerns since the majority of sickle cell patients live in lower-income countries that cannot afford this treatment.",
+      },
+      {
+        question: "What makes 'Prime Editing' different from standard CRISPR-Cas9?",
+        options: [
+          "Prime Editing uses a longer guide RNA",
+          "Prime Editing can only delete DNA, not insert it",
+          "Prime Editing uses a Cas9 nickase + pegRNA to write precise edits without double-strand breaks",
+          "Prime Editing only works in plant cells",
+        ],
+        correct: 2,
+        explanation: "Prime Editing uses a Cas9 'nickase' (cuts one strand only) fused to a reverse transcriptase, guided by a pegRNA. It can install any of the 12 point mutations plus small insertions/deletions without a double-strand break or separate donor template — far more precise than standard CRISPR.",
+      },
+      {
+        question: "He Jiankui edited embryos to make babies resistant to HIV by disrupting CCR5. What is the core ethical problem?",
+        options: [
+          "CCR5 disruption is technically impossible",
+          "Germline edits are heritable — the change passes to all future descendants without their consent",
+          "He used the wrong Cas9 variant for embryo editing",
+          "The editing was not approved because HIV is not serious enough to justify CRISPR",
+        ],
+        correct: 1,
+        explanation: "Germline editing (changing embryos' DNA) creates heritable modifications that affect all future generations. Those individuals — and their children — never consented. This is the fundamental ethical line: somatic editing affects only one person, germline editing affects an entire lineage and is currently banned in most countries.",
+      },
+      {
+        question: "Casgevy costs ~$2.2 million per patient. Which ethical principle does this most directly challenge?",
+        options: [
+          "Non-maleficence (do no harm)",
+          "Justice / equity — life-saving cures should not only be accessible to the wealthy",
+          "Autonomy — patients cannot choose their own treatment",
+          "Beneficence — the therapy provides no benefit",
+        ],
+        correct: 1,
+        explanation: "Justice in medical ethics demands fair distribution of benefits and burdens. A therapy that cures sickle cell disease — which disproportionately affects people of African descent in lower-income settings — but costs $2.2M creates a profound equity problem: those who need it most are least able to access it.",
+      },
+      {
+        question: "What is 'off-target editing' and why does it matter for clinical CRISPR?",
+        options: [
+          "Editing the wrong patient's cells by mistake",
+          "Cas9 cutting at unintended genomic sites with partial sequence similarity to the guide",
+          "Using the wrong PAM sequence in the guide RNA",
+          "Editing only 50% of cells instead of 100%",
+        ],
+        correct: 1,
+        explanation: "Off-target edits occur when Cas9 tolerates mismatches between the gRNA and non-target sites, creating cuts in unintended genes. If an off-target site falls in a tumour suppressor gene, it could contribute to cancer. Clinical CRISPR programs use whole-genome sequencing to screen for off-target events — a major regulatory requirement.",
       },
     ],
   },

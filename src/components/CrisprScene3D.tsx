@@ -50,11 +50,6 @@ function makeHelixCurve(yFrom: number, yTo: number, phaseOff: number) {
   return new THREE.CatmullRomCurve3(pts);
 }
 
-function checkPhase(current: string, target: string) {
-  const order = ["target","bind","cut","delete","ligate","done"];
-  return order.indexOf(current) >= order.indexOf(target);
-}
-
 // ── Shared button ─────────────────────────────────────────────────
 const simBtnBase: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 7,
@@ -86,8 +81,8 @@ function SimButton({ icon, label, onClick, active, color = "#4fc3f7", disabled }
 }
 
 // ── Public component ──────────────────────────────────────────────
-export default function CrisprScene3D(props: { pair: PairInfo | null; seqLength: number }) {
-  const { pair, seqLength } = props;
+export default function CrisprScene3D(props: { pair: PairInfo | null; seqLength: number; strategyMode?: "ko" | "ki" }) {
+  const { pair, seqLength, strategyMode = "ko" } = props;
   const [paused, setPaused]         = useState(false);
   const [resetToken, setResetToken] = useState(0);
   const [phase, setPhaseOut]        = useState<string>("idle");
@@ -122,12 +117,54 @@ export default function CrisprScene3D(props: { pair: PairInfo | null; seqLength:
 
         <Environment preset="night" />
 
-        <GroupCrisprScene cuts={cuts} paused={paused} resetToken={resetToken} onPhaseChange={setPhaseOut} />
+        <GroupCrisprScene cuts={cuts} paused={paused} resetToken={resetToken} onPhaseChange={setPhaseOut} strategyMode={strategyMode} />
 
         <OrbitControls enablePan={false} minDistance={7} maxDistance={20}
           maxPolarAngle={Math.PI * 0.65} minPolarAngle={Math.PI * 0.28} />
         <ContactShadows opacity={0.5} scale={25} blur={2} far={10} resolution={256} color="#000000" />
       </Canvas>
+
+      {/* ── Simulation LOG — HTML overlay (never moves) ─────────── */}
+      <div style={{
+        position: "absolute", top: 14, left: 14,
+        background: "rgba(4,8,18,0.88)", border: "1px solid rgba(255,255,255,0.10)",
+        backdropFilter: "blur(14px)", borderRadius: 10, padding: "12px 16px",
+        minWidth: 170, zIndex: 10,
+      }}>
+        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.14em",
+          color: "rgba(255,255,255,0.35)", marginBottom: 8, fontFamily: "monospace" }}>
+          SIMULATION LOG
+        </div>
+        {[
+          { id: "target", label: strategyMode === "ki" ? "gRNA Search"       : "gRNA Search"    },
+          { id: "bind",   label: "Cas9 Binding"                                                   },
+          { id: "cut",    label: "DNA Cleavage"                                                   },
+          { id: "delete", label: strategyMode === "ki" ? "DSB / Gap Open"    : "Excision"        },
+          { id: "ligate", label: strategyMode === "ki" ? "Donor Integration" : "Ligation"        },
+          { id: "done",   label: strategyMode === "ki" ? "HDR Complete"      : "NHEJ Complete"   },
+        ].map((item) => {
+          const phaseOrder = ["target","bind","cut","delete","ligate","done"];
+          const active = hasPair && phaseOrder.indexOf(phase) >= phaseOrder.indexOf(item.id);
+          const isDoneItem = item.id === "done";
+          return (
+            <div key={item.id} style={{
+              display: "flex", alignItems: "center", gap: 7,
+              marginBottom: 5, fontSize: 11, fontFamily: "var(--font-mono, monospace)",
+              color: isDoneItem && active ? "#fbbf24" : active ? "#4ade80" : "rgba(255,255,255,0.22)",
+              fontWeight: active ? 700 : 400,
+            }}>
+              <span style={{ fontSize: 9 }}>{active ? "✓" : "○"}</span>
+              {item.label}
+            </div>
+          );
+        })}
+        {cuts && (
+          <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(255,255,255,0.07)",
+            fontSize: 10, color: "#FBBF24", fontFamily: "monospace", fontWeight: 700 }}>
+            Span: {Math.abs(cuts.b - cuts.a)} bp
+          </div>
+        )}
+      </div>
 
       {/* ── Simulation controls ──────────────────────────────────── */}
       <div style={{
@@ -153,9 +190,9 @@ export default function CrisprScene3D(props: { pair: PairInfo | null; seqLength:
            : phase === "target" ? "SEARCHING"
            : phase === "bind"   ? "BINDING"
            : phase === "cut"    ? "CUTTING"
-           : phase === "delete" ? "EXCISING"
-           : phase === "ligate" ? "REPAIRING"
-           : phase === "done"   ? "COMPLETE ✓"
+           : phase === "delete" ? (strategyMode === "ki" ? "DSB OPEN" : "EXCISING")
+           : phase === "ligate" ? (strategyMode === "ki" ? "INSERTING" : "REPAIRING")
+           : phase === "done"   ? (strategyMode === "ki" ? "HDR DONE ✓" : "NHEJ DONE ✓")
            : "—"}
           {paused && hasPair && phase !== "done" ? " ·· PAUSED" : ""}
         </div>
@@ -199,8 +236,10 @@ type Phase = "idle" | "target" | "bind" | "cut" | "delete" | "ligate" | "done";
 function GroupCrisprScene(props: {
   cuts: null | { t1: number; t2: number; a: number; b: number };
   paused: boolean; resetToken: number; onPhaseChange: (p: string) => void;
+  strategyMode: "ko" | "ki";
 }) {
-  const { cuts, paused, resetToken, onPhaseChange } = props;
+  const { cuts, paused, resetToken, onPhaseChange, strategyMode } = props;
+  const isKI = strategyMode === "ki";
   const [phase, setPhase] = useState<Phase>("idle");
 
   const tRef      = useRef(0);
@@ -251,8 +290,9 @@ function GroupCrisprScene(props: {
       if (tRef.current > 0.5) { tRef.current = 0; setPhase("delete"); }
     } else if (phase === "delete") {
       flash.current = Math.max(0, flash.current - dt * 2.0);
-      midScale.current = Math.max(0, midScale.current - dt * 1.8);
-      if (midScale.current <= 0.01) { tRef.current = 0; setPhase("ligate"); }
+      const kiStop = isKI ? 0.18 : 0.0;
+      midScale.current = Math.max(kiStop, midScale.current - dt * 1.8);
+      if (midScale.current <= kiStop + 0.005) { tRef.current = 0; setPhase("ligate"); }
     } else if (phase === "ligate") {
       snap.current = Math.min(1, snap.current + dt * 0.85);
       if (snap.current > 0.75) {
@@ -269,7 +309,8 @@ function GroupCrisprScene(props: {
   const yMin   = Math.min(y1, y2);
   const yMax   = Math.max(y1, y2);
   const gap    = cuts ? yMax - yMin : 0;
-  const shift  = snap.current * (gap / 2);
+  // KI: keep gap open so donor helix can fill it; KO: snap ends together
+  const shift  = isKI ? 0 : snap.current * (gap / 2);
 
   const isDone = phase === "done";
 
@@ -282,16 +323,28 @@ function GroupCrisprScene(props: {
           <DNAHelixSegment yFrom={yMax} yTo={DNA.H / 2} healed={isDone} />
         </group>
 
-        {/* Excised middle segment */}
-        {cuts && (
+        {/* Cut / excised / donor-insert middle segment — hidden in KI once donor arrives */}
+        {cuts && !(isKI && (phase === "ligate" || phase === "done")) && (
           <group scale={[1, midScale.current, 1]}>
             <DNAHelixSegment yFrom={yMin} yTo={yMax} accent />
-            <DeletionGlow yMin={yMin} yMax={yMax} flash={flash.current} />
+            <DeletionGlow yMin={yMin} yMax={yMax} flash={flash.current} ki={isKI} />
             {midScale.current > 0.15 && (
               <OutlinedText pos={[0, (yMin + yMax) / 2, 2.5]} size={0.17}
-                color="#E9D5FF" text="Excising…" anchor="center" />
+                color={isKI ? "#6ee7b7" : "#E9D5FF"}
+                text={isKI ? "Opening DSB…" : "Excising…"}
+                anchor="center" />
             )}
           </group>
+        )}
+
+        {/* KI-only: donor helix materialises in the gap (gap stays open — no snapping) */}
+        {cuts && isKI && (phase === "ligate" || phase === "done") && (
+          <DonorHelixInsert
+            yMin={yMin}
+            yMax={yMax}
+            progress={snap.current}
+            done={isDone}
+          />
         )}
 
         {/* Bottom segment */}
@@ -358,7 +411,7 @@ function GroupCrisprScene(props: {
         </>
       )}
 
-      <LegendPanel phase={phase} hasPair={Boolean(cuts)} cuts={cuts} />
+      {/* Legend is now an HTML overlay — removed from 3D scene */}
     </group>
   );
 }
@@ -518,12 +571,93 @@ function PAMHint({ y, side }: any) {
 }
 
 // ── DeletionGlow ──────────────────────────────────────────────────
-function DeletionGlow({ yMin, yMax, flash }: any) {
+function DeletionGlow({ yMin, yMax, flash, ki }: any) {
+  const col = ki ? "#059669" : "#7c3aed";
   return (
     <mesh position={[0, (yMin + yMax) / 2, 0]}>
       <cylinderGeometry args={[DNA.radius * 1.8, DNA.radius * 1.8, Math.abs(yMax - yMin) + 0.1, 36, 1, true]} />
-      <meshBasicMaterial color="#7c3aed" transparent opacity={0.12 + flash * 0.42} side={THREE.DoubleSide} />
+      <meshBasicMaterial color={col} transparent opacity={0.12 + flash * 0.42} side={THREE.DoubleSide} />
     </mesh>
+  );
+}
+
+// ── GreenDNASegment — double helix in donor green ─────────────────
+function GreenDNASegment({ yFrom, yTo }: { yFrom: number; yTo: number }) {
+  const curveA = useMemo(() => makeHelixCurve(yFrom, yTo, 0.5),           [yFrom, yTo]);
+  const curveB = useMemo(() => makeHelixCurve(yFrom, yTo, Math.PI + 0.5), [yFrom, yTo]);
+  const count  = Math.max(2, Math.round(Math.abs(yTo - yFrom) / DNA.H * DNA.turns * 10));
+  const rungs  = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < count; i++) {
+      const t   = i / (count - 1 || 1);
+      const y   = lerp(yFrom, yTo, t);
+      const u   = (y + DNA.H / 2) / DNA.H;
+      const ang = u * DNA.turns * Math.PI * 2 + 0.5;
+      const pA  = new THREE.Vector3(Math.cos(ang) * DNA.radius, y, Math.sin(ang) * DNA.radius);
+      const pB  = new THREE.Vector3(Math.cos(ang + Math.PI) * DNA.radius, y, Math.sin(ang + Math.PI) * DNA.radius);
+      const dir = pB.clone().sub(pA).normalize();
+      const len = pB.distanceTo(pA);
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      const mid  = pA.clone().lerp(pB, 0.5);
+      arr.push({ mid, quat, len, i });
+    }
+    return arr;
+  }, [yFrom, yTo, count]);
+
+  return (
+    <group>
+      <mesh>
+        <tubeGeometry args={[curveA, 160, DNA.backboneR * 1.15, 14, false]} />
+        <meshStandardMaterial color="#22c55e" metalness={0.1} roughness={0.2}
+          emissive="#16a34a" emissiveIntensity={0.70} />
+      </mesh>
+      <mesh>
+        <tubeGeometry args={[curveB, 160, DNA.backboneR * 1.15, 14, false]} />
+        <meshStandardMaterial color="#4ade80" metalness={0.1} roughness={0.2}
+          emissive="#15803d" emissiveIntensity={0.70} />
+      </mesh>
+      {rungs.map(r => (
+        <mesh key={r.i} position={r.mid} quaternion={r.quat}>
+          <cylinderGeometry args={[DNA.rungR, DNA.rungR, r.len, 10]} />
+          <meshStandardMaterial color="#86efac" emissive="#4ade80" emissiveIntensity={0.25} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── DonorHelixInsert — green DNA helix that grows into the DSB gap ─
+function DonorHelixInsert({ yMin, yMax, progress, done }: {
+  yMin: number; yMax: number; progress: number; done: boolean;
+}) {
+  const ease = easeOut3(Math.min(1, progress * 1.3));
+  if (ease < 0.05) return null;
+  const midY = (yMin + yMax) / 2;
+  const h    = Math.abs(yMax - yMin);
+  const col  = done ? "#22c55e" : "#34d399";
+
+  return (
+    <group>
+      {/* Scale vertically so helix grows from center outward */}
+      <group position={[0, midY, 0]} scale={[1, ease, 1]}>
+        <GreenDNASegment yFrom={-h / 2} yTo={h / 2} />
+        {/* Glow halo */}
+        <mesh>
+          <cylinderGeometry args={[DNA.radius * 1.48, DNA.radius * 1.48, h + 0.2, 32, 1, true]} />
+          <meshBasicMaterial color={col} transparent opacity={0.09 + ease * 0.16} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+      {/* Label outside the scaled group so it doesn't squish */}
+      {ease > 0.35 && (
+        <OutlinedText
+          pos={[0, yMax + 0.45, 2.5]}
+          size={0.155}
+          color={done ? "#4ade80" : "#6ee7b7"}
+          text={done ? "✓ Donor Integrated" : "Inserting Donor…"}
+          anchor="center"
+        />
+      )}
+    </group>
   );
 }
 
@@ -655,44 +789,6 @@ function LigaseEnzyme({ y, progress, healed, flip }: {
         text={healed ? "✓ Sealed" : "Ligase"}
         anchor={flip ? "right" : "left"}
       />
-    </group>
-  );
-}
-
-// ── LegendPanel ───────────────────────────────────────────────────
-function LegendPanel({ phase, hasPair, cuts }: any) {
-  const items = [
-    { id: "target", label: "gRNA Search"   },
-    { id: "bind",   label: "Cas9 Binding"  },
-    { id: "cut",    label: "DNA Cleavage"  },
-    { id: "delete", label: "Excision"      },
-    { id: "ligate", label: "Ligation"      },
-    { id: "done",   label: "NHEJ Complete" },
-  ];
-  return (
-    <group position={[-4.6, 2.1, 0]}>
-      <mesh position={[1.25, -1.15, -0.2]}>
-        <planeGeometry args={[4.0, 4.0]} />
-        <meshStandardMaterial color="#05060A" transparent opacity={0.72} />
-      </mesh>
-      <OutlinedText pos={[0, 0.4, 0]} size={0.23} color="#FFFFFF" text="SIMULATION LOG" anchor="left" />
-      {items.map((item, i) => {
-        const active = hasPair && checkPhase(phase, item.id);
-        const isDoneItem = item.id === "done";
-        return (
-          <OutlinedText key={item.id} pos={[0, -0.18 - i * 0.42, 0]} size={0.155}
-            color={isDoneItem && active ? "#fbbf24" : active ? "#4ade80" : "#475569"}
-            text={`${active ? "✓" : "○"} ${item.label}`}
-            anchor="left"
-          />
-        );
-      })}
-      {cuts && (
-        <OutlinedText pos={[0, -2.72, 0]} size={0.135} color="#FBBF24"
-          text={`Span: ${Math.abs(cuts.b - cuts.a)} bp`}
-          anchor="left"
-        />
-      )}
     </group>
   );
 }
