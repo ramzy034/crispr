@@ -118,19 +118,20 @@ export default function GuidedTour({ onDone }: { onDone: () => void }) {
   const vh = window.innerHeight;
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-  // If the element is taller than 48 % of the viewport, only spotlight
-  // its top portion (the header / first visible strip) and center the tooltip
-  // so the user never needs to scroll to click Next.
+  // For very tall elements (scenarios panel), clamp the spotlight height so it
+  // doesn't cause lag, and only center the tooltip for that specific step.
   const MAX_SPOT_H = Math.round(vh * 0.48);
   const spotH      = rect ? Math.min(rect.height, MAX_SPOT_H) : 0;
   const isClipped  = Boolean(rect && rect.height > MAX_SPOT_H);
+  // Only center tooltip when: no element, explicit center step, OR it's the
+  // scenarios step (the only step where the panel is so tall it needs centering).
+  const shouldCenter = !rect || current.side === "center" || (isClipped && current.id === "scenarios");
 
   // ── Compute tooltip position ────────────────────────────────────
   let tipStyle: React.CSSProperties = { position: "fixed", zIndex: 9004, width: TIP_W };
   let arrowSide: Side | null = null;
 
-  // Always center when: no rect, welcome step, or element taller than viewport slice
-  if (!rect || current.side === "center" || isClipped) {
+  if (shouldCenter) {
     tipStyle = { ...tipStyle, top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
   } else {
     const side = current.side ?? "bottom";
