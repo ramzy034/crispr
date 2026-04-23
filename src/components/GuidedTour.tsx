@@ -113,49 +113,63 @@ export default function GuidedTour({ onDone }: { onDone: () => void }) {
   const goNext = () => (isLast ? onDone() : setStep(s => s + 1));
   const goPrev = () => { if (!isFirst) setStep(s => s - 1); };
 
-  // ── Compute spotlight dimensions (clamp tall elements) ───────────
+  // ── Compute spotlight dimensions ─────────────────────────────────
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-  // For very tall elements (scenarios panel), clamp the spotlight height so it
-  // doesn't cause lag, and only center the tooltip for that specific step.
-  const MAX_SPOT_H = Math.round(vh * 0.48);
+  // Cap spotlight at 70 % vh — large enough for all normal sections (3D sim,
+  // heatmap, guide table) but still clamps the 12-card scenarios panel which
+  // would otherwise be 1000 px+ and cause scroll-lag in the SVG mask.
+  const MAX_SPOT_H = Math.round(vh * 0.70);
   const spotH      = rect ? Math.min(rect.height, MAX_SPOT_H) : 0;
   const isClipped  = Boolean(rect && rect.height > MAX_SPOT_H);
-  // Only center tooltip when: no element, explicit center step, OR it's the
-  // scenarios step (the only step where the panel is so tall it needs centering).
+
+  // Center the tooltip when: no target element, welcome/center step, or the
+  // scenarios panel (too tall to have a meaningful side tooltip).
   const shouldCenter = !rect || current.side === "center" || (isClipped && current.id === "scenarios");
 
-  // ── Compute tooltip position ────────────────────────────────────
+  // ── Compute tooltip position (overflow-aware) ─────────────────────
   let tipStyle: React.CSSProperties = { position: "fixed", zIndex: 9004, width: TIP_W };
   let arrowSide: Side | null = null;
 
   if (shouldCenter) {
     tipStyle = { ...tipStyle, top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
   } else {
+    const TOOLTIP_H = 215; // conservative height estimate
+    const TOPBAR    = 64;  // clear the top navigation bar
     const side = current.side ?? "bottom";
-    if (side === "bottom") {
-      tipStyle.top  = rect.bottom + PAD + OFFSET;
-      tipStyle.left = clamp(rect.left + rect.width / 2 - TIP_W / 2, 12, vw - TIP_W - 12);
-      arrowSide = "top";
-    } else if (side === "top") {
-      tipStyle.bottom = vh - (rect.top - PAD - OFFSET);
-      tipStyle.left   = clamp(rect.left + rect.width / 2 - TIP_W / 2, 12, vw - TIP_W - 12);
-      arrowSide = "bottom";
-    } else if (side === "right") {
-      const lx = rect.right + PAD + OFFSET;
-      if (lx + TIP_W < vw - 12) {
-        tipStyle.left = lx;
-        arrowSide = "left";
+
+    // Pre-compute whether each direction has room
+    const fitsBelow = rect!.bottom + PAD + OFFSET + TOOLTIP_H <= vh - 8;
+    const fitsAbove = rect!.top    - PAD - OFFSET - TOOLTIP_H >= TOPBAR + 4;
+    const fitsRight = rect!.right  + PAD + OFFSET + TIP_W    <= vw - 12;
+
+    const hCenter = clamp(rect!.left + rect!.width / 2 - TIP_W / 2, 12, vw - TIP_W - 12);
+
+    if (side === "bottom" || side === "top") {
+      const wantBelow = side === "bottom";
+      if (wantBelow ? fitsBelow : fitsAbove) {
+        if (wantBelow) { tipStyle.top    = rect!.bottom + PAD + OFFSET;          arrowSide = "top";    }
+        else           { tipStyle.bottom = vh - (rect!.top - PAD - OFFSET);      arrowSide = "bottom"; }
+        tipStyle.left = hCenter;
+      } else if (wantBelow ? fitsAbove : fitsBelow) {
+        // Flip to the opposite side
+        if (wantBelow) { tipStyle.bottom = vh - (rect!.top - PAD - OFFSET);      arrowSide = "bottom"; }
+        else           { tipStyle.top    = rect!.bottom + PAD + OFFSET;          arrowSide = "top";    }
+        tipStyle.left = hCenter;
       } else {
-        tipStyle.right = vw - (rect.left - PAD - OFFSET);
-        arrowSide = "right";
+        // Neither fits — center the tooltip
+        tipStyle = { ...tipStyle, top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
       }
-      tipStyle.top = clamp(rect.top + rect.height / 2 - 110, 12, vh - 280);
+    } else if (side === "right") {
+      if (fitsRight) { tipStyle.left  = rect!.right + PAD + OFFSET;             arrowSide = "left";  }
+      else            { tipStyle.right = vw - (rect!.left - PAD - OFFSET);       arrowSide = "right"; }
+      tipStyle.top = clamp(rect!.top + rect!.height / 2 - 110, TOPBAR + 4, vh - TOOLTIP_H - 8);
     } else {
-      tipStyle.right = vw - (rect.left - PAD - OFFSET);
-      tipStyle.top   = clamp(rect.top + rect.height / 2 - 110, 12, vh - 280);
+      // left
+      tipStyle.right = vw - (rect!.left - PAD - OFFSET);
+      tipStyle.top   = clamp(rect!.top + rect!.height / 2 - 110, TOPBAR + 4, vh - TOOLTIP_H - 8);
       arrowSide = "right";
     }
   }
