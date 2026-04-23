@@ -24,11 +24,12 @@ import SearchModal from "./components/SearchModal";
 import LabScenarioPanel, { WARNING_MESSAGES } from "./components/LabScenarioPanel";
 import type { ScenarioWarning } from "./components/LabScenarioPanel";
 import GuidedTour from "./components/GuidedTour";
+import QuizPage from "./components/QuizPage";
 
 const DEMO = `>Demo sequence
 ATGCGTACGTTACCGGATCCGATCGATCGATCGGGGTTTACCGGCGTACGATGCGGATCCGGTAGGCTAGCGGATC`;
 
-type ActivePage = "learn" | "lab" | "glossary" | "methodology" | "references";
+type ActivePage = "learn" | "lab" | "glossary" | "methodology" | "references" | "quiz";
 
 export default function App() {
   const [lang, setLang] = useState<Lang>(() => {
@@ -221,6 +222,12 @@ export default function App() {
             >
               {T.navReferences}
             </button>
+            <button
+              className={`navBtn ${activePage === "quiz" ? "navBtnActive" : ""}`}
+              onClick={() => setActivePage("quiz")}
+            >
+              🧠 Quiz
+            </button>
             <a href="#export">{T.navExport}</a>
           </nav>
           <div className="topControls">
@@ -269,6 +276,8 @@ export default function App() {
         <MethodologyPage />
       ) : activePage === "references" ? (
         <ReferencesPage />
+      ) : activePage === "quiz" ? (
+        <QuizPage />
       ) : (
         <>
           {/* ── DESIGNER HERO ───────────────────────────────── */}
