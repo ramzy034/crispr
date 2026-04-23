@@ -244,6 +244,19 @@ export default function App() {
             <div className="ctrlBox search-ctrl" onClick={() => setShowSearch(true)} title="Search (Ctrl+K)">
               ⌕ <span className="search-kbd">⌘K</span>
             </div>
+            {activePage === "lab" && (
+              <button
+                className="ds-tour-btn"
+                style={{ fontSize: 11, padding: "5px 12px" }}
+                onClick={() => {
+                  try { localStorage.removeItem("crispr-tour-done"); } catch { /* ignore */ }
+                  setShowTour(true);
+                }}
+                title="Restart the guided tour"
+              >
+                ▶ Tour
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -341,7 +354,10 @@ export default function App() {
                 <button className="ds-help-btn" onClick={() => setShowHelp(true)}>
                   ? How it works
                 </button>
-                <button className="ds-tour-btn" onClick={() => setShowTour(true)}>
+                <button className="ds-tour-btn" onClick={() => {
+                  try { localStorage.removeItem("crispr-tour-done"); } catch { /* ignore */ }
+                  setShowTour(true);
+                }}>
                   ▶ Take a tour
                 </button>
               </div>
