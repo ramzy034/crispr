@@ -118,16 +118,17 @@ export default function GuidedTour({ onDone }: { onDone: () => void }) {
   const vh = window.innerHeight;
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-  // Cap spotlight at 70 % vh — large enough for all normal sections (3D sim,
-  // heatmap, guide table) but still clamps the 12-card scenarios panel which
-  // would otherwise be 1000 px+ and cause scroll-lag in the SVG mask.
-  const MAX_SPOT_H = Math.round(vh * 0.70);
-  const spotH      = rect ? Math.min(rect.height, MAX_SPOT_H) : 0;
-  const isClipped  = Boolean(rect && rect.height > MAX_SPOT_H);
+  // Only cap the scenarios panel (12-card grid, 1000px+). Every other element
+  // gets a spotlight that matches its full height exactly.
+  const SCENARIO_CAP = Math.round(vh * 0.65);
+  const isClipped    = current.id === "scenarios" && Boolean(rect && rect.height > SCENARIO_CAP);
+  const spotH        = rect
+    ? (current.id === "scenarios" ? Math.min(rect.height, SCENARIO_CAP) : rect.height)
+    : 0;
 
   // Center the tooltip when: no target element, welcome/center step, or the
-  // scenarios panel (too tall to have a meaningful side tooltip).
-  const shouldCenter = !rect || current.side === "center" || (isClipped && current.id === "scenarios");
+  // scenarios panel is taller than its cap (tooltip would need to scroll to reach).
+  const shouldCenter = !rect || current.side === "center" || isClipped;
 
   // ── Compute tooltip position (overflow-aware) ─────────────────────
   let tipStyle: React.CSSProperties = { position: "fixed", zIndex: 9004, width: TIP_W };
