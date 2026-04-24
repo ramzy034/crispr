@@ -403,9 +403,6 @@ export default function QuizPage() {
 
   function nextQuestion() {
     if (idx + 1 >= questions.length) {
-      const final = answers.map((a, i) => a !== undefined ? a : -1)
-        .filter((a, i) => a === questions[i]?.correctIdx).length;
-      // Also count current if just answered
       const currentCorrect = currentAnswer === q.correctIdx ? 1 : 0;
       const allAnswered = answers.filter(a => a !== undefined).length;
       const finalScore = allAnswered === questions.length ? sessionScore : sessionScore + currentCorrect;
